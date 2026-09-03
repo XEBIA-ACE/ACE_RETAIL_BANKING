@@ -3,27 +3,24 @@ package com.banking.domain.model;
 import lombok.Builder;
 import lombok.Value;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Loan domain entity.
+ * Payee domain entity (pure domain object — no JPA annotations).
  */
 @Value
 @Builder(toBuilder = true)
-public class Loan {
+public class Payee {
 
     Long id;
     String externalId;
     Long customerId;
-    BigDecimal principal;
-    BigDecimal interestRate;
-    Integer termMonths;
-    BigDecimal monthlyPayment;
-    BigDecimal outstanding;
+    String payeeName;
+    String accountNumber;
+    String bankCode;
+    String bankName;
+    String nickname;
     String currency;
-    LoanStatus status;
-    LocalDateTime disbursedAt;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
 }
