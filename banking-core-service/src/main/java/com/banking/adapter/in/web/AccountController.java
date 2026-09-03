@@ -1,76 +1,60 @@
 package com.banking.adapter.in.web;
 
-import com.banking.adapter.in.web.dto.AccountResponse;
-import com.banking.adapter.in.web.dto.OpenAccountRequest;
-import com.banking.application.port.in.AccountUseCase;
+import com.banking.adapter.in.web.dto.AccountBalanceSummaryResponse;
+import com.banking.application.service.AccountService;
 import com.banking.domain.model.Account;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * REST adapter for account-related operations.
+ */
 @RestController
-@RequestMapping("/api/v1/accounts")
+@RequestMapping("/api/v1/customers/{customerExternalId}/accounts")
 @RequiredArgsConstructor
 @Tag(name = "Accounts", description = "Account management")
 public class AccountController {
 
-    private final AccountUseCase accountUseCase;
+    private final AccountService accountService;
 
-    @PostMapping
-    @Operation(summary = "Open a new account")
-    public ResponseEntity<AccountResponse> openAccount(
-            @Valid @RequestBody OpenAccountRequest request) {
-        Account account = accountUseCase.openAccount(
-                new AccountUseCase.OpenAccountCommand(
-                        request.getCustomerExternalId(),
-                        request.getAccountType(),
-                        request.getCurrency()
-                )
-        );
-        return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(account));
-    }
+    /**
+     * Returns the current balance for every account belonging to the given customer.
+     *
+     * @param customerExternalId public customer identifier
+     * @return list of {@link AccountBalanceSummaryResponse} — HTTP 200, or 404 if customer unknown
+     */
+    @GetMapping("/balances")
+    @Operation(summary = "Get account balances for a customer")
+    public ResponseEntity<List<AccountBalanceSummaryResponse>> getAccountBalances(
+            @PathVariable String customerExternalId) {
 
-    @GetMapping("/{externalId}")
-    @Operation(summary = "Get account by external ID")
-    public ResponseEntity<AccountResponse> getAccount(@PathVariable String externalId) {
-        return accountUseCase.findAccountById(externalId)
-                .map(a -> ResponseEntity.ok(toResponse(a)))
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping
-    @Operation(summary = "List accounts by customer")
-    public ResponseEntity<List<AccountResponse>> listAccountsByCustomer(
-            @RequestParam String customerExternalId) {
-        List<AccountResponse> accounts = accountUseCase.listAccountsByCustomer(customerExternalId)
+        List<AccountBalanceSummaryResponse> balances = accountService
+                .getAccountBalances(customerExternalId)
                 .stream()
-                .map(this::toResponse)
+                .map(this::toBalanceSummary)
                 .collect(Collectors.toList());
-        return ResponseEntity.ok(accounts);
+
+        return ResponseEntity.ok(balances);
     }
 
-    @DeleteMapping("/{externalId}")
-    @Operation(summary = "Close an account")
-    public ResponseEntity<AccountResponse> closeAccount(@PathVariable String externalId) {
-        return ResponseEntity.ok(toResponse(accountUseCase.closeAccount(externalId)));
-    }
+    // -----------------------------------------------------------------------
+    // Mapping helpers
+    // -----------------------------------------------------------------------
 
-    private AccountResponse toResponse(Account account) {
-        return AccountResponse.builder()
-                .externalId(account.getExternalId())
+    private AccountBalanceSummaryResponse toBalanceSummary(Account account) {
+        return AccountBalanceSummaryResponse.builder()
+                .accountExternalId(account.getExternalId())
                 .accountNumber(account.getAccountNumber())
-                .accountType(account.getAccountType().name())
+                .accountType(account.getAccountType())
                 .balance(account.getBalance())
                 .currency(account.getCurrency())
-                .status(account.getStatus().name())
-                .createdAt(account.getCreatedAt())
+                .status(account.getStatus())
                 .build();
     }
 }

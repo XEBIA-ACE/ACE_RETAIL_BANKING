@@ -2,21 +2,27 @@ package com.banking.application.port.out;
 
 import com.banking.domain.model.Customer;
 
-import java.util.List;
 import java.util.Optional;
 
 /**
- * Outbound port — persistence operations for Customer.
+ * Output port for Customer persistence operations.
+ * Implemented by the persistence adapter layer.
  */
 public interface CustomerRepository {
 
-    Customer save(Customer customer);
-
+    /**
+     * Find a customer by their external (public) identifier.
+     *
+     * @param externalId the external UUID-style identifier
+     * @return an Optional containing the Customer if found, or empty if not
+     */
     Optional<Customer> findByExternalId(String externalId);
 
-    Optional<Customer> findByEmail(String email);
-
-    List<Customer> findAll(int page, int size);
-
-    boolean existsByEmail(String email);
+    /**
+     * Persist a new or updated Customer.
+     *
+     * @param customer the customer to save
+     * @return the saved Customer (may include generated id / timestamps)
+     */
+    Customer save(Customer customer);
 }
