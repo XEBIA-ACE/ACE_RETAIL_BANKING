@@ -2,6 +2,7 @@ package com.banking.domain.exception;
 
 /**
  * Thrown when a requested resource cannot be found.
+ * Maps to HTTP 404 via {@link com.banking.adapter.in.web.GlobalExceptionHandler}.
  */
 public class ResourceNotFoundException extends RuntimeException {
 
@@ -9,7 +10,7 @@ public class ResourceNotFoundException extends RuntimeException {
         super(message);
     }
 
-    public ResourceNotFoundException(String resourceType, String identifier) {
-        super(resourceType + " not found: " + identifier);
+    public ResourceNotFoundException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

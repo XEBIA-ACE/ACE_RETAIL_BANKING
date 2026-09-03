@@ -1,21 +1,25 @@
+# Test profile — used by @ActiveProfiles("test") in @WebMvcTest slices.
+# Disables Spring Security auto-configuration so the controller slice tests
+# can exercise endpoints without bearer tokens (security is tested separately).
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+
+  # Use H2 in-memory database for any integration tests that need persistence.
   datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=MySQL
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
     username: sa
     password:
+
   jpa:
     hibernate:
       ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
     show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
-  flyway:
-    enabled: false
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
+logging:
+  level:
+    com.banking: DEBUG

@@ -2,47 +2,38 @@ package com.banking.adapter.in.web;
 
 import com.banking.domain.exception.BusinessRuleException;
 import com.banking.domain.exception.ResourceNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.net.URI;
-import java.util.stream.Collectors;
-
+/**
+ * Centralised exception-to-HTTP-status mapping for all REST controllers.
+ */
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
+    /**
+     * Maps {@link ResourceNotFoundException} → 404 Not Found.
+     */
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ProblemDetail handleNotFound(ResourceNotFoundException ex) {
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
-        pd.setType(URI.create("https://banking.example.com/errors/not-found"));
-        return pd;
+    public ProblemDetail handleResourceNotFound(ResourceNotFoundException ex) {
+        log.error("Resource not found: {}", ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        problem.setDetail(ex.getMessage());
+        return problem;
     }
 
+    /**
+     * Maps {@link BusinessRuleException} → 400 Bad Request.
+     */
     @ExceptionHandler(BusinessRuleException.class)
     public ProblemDetail handleBusinessRule(BusinessRuleException ex) {
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
-        pd.setType(URI.create("https://banking.example.com/errors/business-rule"));
-        return pd;
-    }
-
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
-        String details = ex.getBindingResult().getFieldErrors().stream()
-                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
-                .collect(Collectors.joining(", "));
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, details);
-        pd.setType(URI.create("https://banking.example.com/errors/validation"));
-        return pd;
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ProblemDetail handleGeneric(Exception ex) {
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(
-                HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
-        pd.setType(URI.create("https://banking.example.com/errors/internal"));
-        return pd;
+        log.error("Business rule violation: {}", ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setDetail(ex.getMessage());
+        return problem;
     }
 }

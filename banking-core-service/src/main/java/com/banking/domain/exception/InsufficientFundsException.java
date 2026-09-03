@@ -1,11 +1,19 @@
 package com.banking.domain.exception;
 
 /**
- * Thrown when an account has insufficient funds for a transaction.
+ * Thrown when a debit or payment operation is attempted but the source account
+ * does not have sufficient available balance to cover the requested amount.
+ * Mapped to HTTP 422 Unprocessable Entity by
+ * {@link com.banking.adapter.in.web.GlobalExceptionHandler}.
  */
-public class InsufficientFundsException extends BusinessRuleException {
+public class InsufficientFundsException extends RuntimeException {
 
-    public InsufficientFundsException(String accountId) {
-        super("Insufficient funds in account: " + accountId);
+    /**
+     * Constructs a new InsufficientFundsException with the given detail message.
+     *
+     * @param message human-readable description of the shortfall
+     */
+    public InsufficientFundsException(String message) {
+        super(message);
     }
 }
