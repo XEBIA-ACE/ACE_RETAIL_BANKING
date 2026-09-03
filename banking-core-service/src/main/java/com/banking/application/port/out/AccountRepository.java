@@ -6,19 +6,23 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Outbound port — persistence operations for Account.
+ * Outbound port for account persistence operations.
  */
 public interface AccountRepository {
 
-    Account save(Account account);
-
-    Optional<Account> findById(Long id);
-
-    Optional<Account> findByExternalId(String externalId);
-
-    Optional<Account> findByAccountNumber(String accountNumber);
-
+    /**
+     * Finds all accounts whose internal customer FK matches the given customer id.
+     *
+     * @param customerId internal customer primary key
+     * @return list of matching {@link Account} domain objects; empty list if none
+     */
     List<Account> findByCustomerId(Long customerId);
 
-    boolean existsByAccountNumber(String accountNumber);
+    /**
+     * Finds a single account by its external identifier.
+     *
+     * @param externalId public account identifier
+     * @return {@link Optional} containing the account, or empty if not found
+     */
+    Optional<Account> findByExternalId(String externalId);
 }

@@ -1,0 +1,24 @@
+## Tasks (auto-derived from plan — review and refine)
+
+- [ ] Plan: View Read-Only Account Details on Profile Page (US-002)
+- [ ] Architecture Decision
+- [ ] Layered Change Summary
+- [ ] 1. Port (In) — New Use Case Interface
+- [ ] File:** `banking-core-service/src/main/java/com/banking/application/port/in/ProfileUseCase.java`
+- [ ] 2. DTO — Response Object
+- [ ] File:** `banking-core-service/src/main/java/com/banking/adapter/in/web/dto/ProfileResponse.java`
+- [ ] 3. Application Service — Profile Service
+- [ ] File:** `banking-core-service/src/main/java/com/banking/application/service/ProfileService.java`
+- [ ] 4. Web Adapter — Profile Controller
+- [ ] File:** `banking-core-service/src/main/java/com/banking/adapter/in/web/ProfileController.java`
+- [ ] 5. Exception Handler — Verify Coverage
+- [ ] File:** `banking-core-service/src/main/java/com/banking/adapter/in/web/GlobalExceptionHandler.java`
+- [ ] 6. Tests
+- [ ] Unit test:** `banking-core-service/src/test/java/com/banking/application/service/ProfileServiceTest.java` — success path, not-found path.
+- [ ] Controller slice test:** `banking-core-service/src/test/java/com/banking/adapter/in/web/ProfileControllerTest.java` — HTTP 200 with mocked service, HTTP 404 when service throws `ResourceNotFoundException`, HTTP 401 when unauthenticated.
+- [ ] API Contract (Summary)
+- [ ] `GET /profile` — authenticated, returns `ProfileResponse` JSON, HTTP 200 on success, 404 on missing customer, 500 on unexpected error.
+- [ ] No request body; customer identity resolved from Bearer token / security context.
+- [ ] Data Flow
+- [ ] No Database Schema Changes
+- [ ] Security Consideration

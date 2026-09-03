@@ -1,27 +1,28 @@
 package com.banking.application.port.in;
 
 import com.banking.domain.model.Account;
-import com.banking.domain.model.AccountType;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
- * Inbound port — use cases for account management.
+ * Inbound port for account-related use cases.
  */
 public interface AccountUseCase {
 
-    Account openAccount(OpenAccountCommand command);
+    /**
+     * Returns all accounts (with live balances) for the given customer.
+     *
+     * @param customerExternalId public customer identifier
+     * @return list of {@link Account} domain objects; never {@code null}
+     * @throws com.banking.domain.exception.ResourceNotFoundException if the customer does not exist
+     */
+    List<Account> getAccountBalances(String customerExternalId);
 
-    Optional<Account> findAccountById(String externalId);
-
+    /**
+     * Lists all accounts belonging to a customer.
+     *
+     * @param customerExternalId public customer identifier
+     * @return list of {@link Account} domain objects
+     */
     List<Account> listAccountsByCustomer(String customerExternalId);
-
-    Account closeAccount(String externalId);
-
-    record OpenAccountCommand(
-            String customerExternalId,
-            AccountType accountType,
-            String currency
-    ) {}
 }
