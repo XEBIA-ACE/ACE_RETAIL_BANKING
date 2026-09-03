@@ -1,38 +1,65 @@
-# Quality Principles & Architecture Guardrails
+# Constitution: Quality Principles & Architecture Guardrails
 
-## Architecture Style
-- Hexagonal (Ports & Adapters) architecture must be preserved. Domain models stay pure (no JPA/framework annotations). All new code follows the existing package structure: `domain/model`, `application/service`, `application/port/in`, `application/port/out`, `adapter/in/web`, `adapter/out/persistence`.
-- No business logic in controllers or persistence adapters.
-- All new use-case methods must be defined as port interfaces before being implemented in services.
+## Architecture Principles
+
+### Hexagonal Architecture (Ports & Adapters)
+- All business logic lives in `application/service` and `domain` packages only.
+- Web adapters (`adapter/in/web`) must never contain business logic — they translate HTTP to/from domain commands/responses.
+- Persistence adapters (`adapter/out/persistence`) must never be called directly from web adapters.
+- New use cases must be expressed as a port interface under `application/port/in/`.
+
+### Domain Model Integrity
+- Domain models (`domain/model`) are immutable Lombok `@Value` objects with `toBuilder`.
+- No JPA annotations on domain models — persistence concerns belong in the persistence adapter layer.
+- Enums (`CustomerStatus`, `AccountStatus`, etc.) are the single source of truth for lifecycle states.
+
+### API Design
+- All REST endpoints follow existing conventions: `externalId` as path variable, JSON request/response bodies.
+- HTTP 200 for successful reads; HTTP 404 via `ResourceNotFoundException`; HTTP 500 for unexpected failures.
+- Error responses must be structured (not plain strings) and handled by `GlobalExceptionHandler`.
+- The `GET /profile` endpoint must be authenticated — no unauthenticated access permitted.
 
 ## Coding Standards
-- Java 17+, Spring Boot conventions.
-- Lombok `@Value`, `@Builder(toBuilder = true)` for domain models; `@RequiredArgsConstructor` for services.
-- `@Transactional(readOnly = true)` on all read-only service methods.
-- All public API methods must have Javadoc.
-- No raw types; use generics and `Optional` where appropriate.
-- Currency amounts: always `BigDecimal`, never `double`/`float`.
-- Currency formatting: locale-aware, always include currency symbol (e.g., `NumberFormat.getCurrencyInstance`).
 
-## API Contract Standards
-- RESTful JSON endpoints; HTTP 200 for success, 404 for not found, 400 for validation errors.
-- Response DTOs must not expose internal database IDs (`Long id`); use `externalId` only.
-- New endpoint: `GET /api/v1/customers/{customerExternalId}/accounts/balances` returns a list of account balance summaries.
-- Existing endpoint `GET /api/v1/customers/{customerExternalId}/accounts` may be enhanced to include balance inline.
+### Java / Spring Boot
+- Java 17+; Spring Boot conventions already in place.
+- Use `@Slf4j` + `log.info/warn/error` for observability; no `System.out.println`.
+- `@Transactional(readOnly = true)` on all read-only service methods.
+- Lombok `@RequiredArgsConstructor` for constructor injection; no field-level `@Autowired`.
+- All new classes must have Javadoc at the class level.
+
+### Naming Conventions
+- Controller methods: `getXxx`, `createXxx`, `updateXxx`, `deleteXxx`.
+- Service methods: verb-noun (`findProfileByCustomerId`).
+- DTOs: suffix `Request` for inbound, `Response` for outbound.
+- Port interfaces: suffix `UseCase` (in-ports), `Repository` (out-ports).
+
+### Testing
+- Unit tests for every new service method using JUnit 5 + Mockito.
+- Integration/controller slice tests (`@WebMvcTest`) for new endpoints.
+- Test class naming: `<ClassName>Test` in the same package structure under `src/test`.
+- Minimum coverage target: 80% line coverage on new code.
 
 ## Non-Functional Requirements
-- **Performance**: Balance retrieval for all accounts of a customer must complete within 2 seconds under normal load (p95).
-- **Accessibility**: All balance figures rendered in the UI must meet WCAG 2.1 AA contrast ratio (≥ 4.5:1). High-contrast mode must not break balance readability.
-- **Security**: Balance data is customer-scoped; no cross-customer data leakage. Authentication/authorization checks must be applied on the balance endpoint.
-- **Observability**: Log balance retrieval at INFO level with customer external ID and account count; log errors at ERROR level.
 
-## Testing Standards
-- Unit tests for all new service methods using JUnit 5 + Mockito.
-- Integration/controller tests using `@WebMvcTest` or `@SpringBootTest` for new endpoints.
-- Test coverage for: happy path (single account), multiple accounts, correct currency formatting.
-- No test should rely on real database state; use mocks or in-memory H2 (as per `application-test.yml`).
+### Performance
+- Profile page response time must be under 1 second under normal load (p95).
+- The `GET /profile` endpoint must not perform N+1 queries; fetch all required data in a single service call.
+
+### Security
+- Endpoint must be protected by the existing authentication mechanism.
+- No PII must appear in log statements (mask email in logs).
+- Response must not expose internal database IDs (`id` field); use `externalId` only.
+
+### Error Handling
+- Never return blank or null field values silently; always surface errors via structured error response.
+- `GlobalExceptionHandler` must handle `ResourceNotFoundException` → HTTP 404 and generic exceptions → HTTP 500.
+
+### Observability
+- Log at `INFO` level on successful profile fetch (include `externalId`, omit PII).
+- Log at `WARN` level when profile is not found.
 
 ## Out-of-Scope Guardrails
-- Do NOT implement stale-data/fallback handling (US-04).
-- Do NOT implement aggregated balance totals (US-03).
-- Do NOT modify loan, payment, or transaction flows.
+- Name field editing (US-03) must NOT be implemented in this story.
+- Account Settings and Account Actions sections are out of scope.
+- No write operations (POST/PUT/PATCH/DELETE) on the profile endpoint.

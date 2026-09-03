@@ -1,104 +1,130 @@
-# Spec: US-002 — Real-Time Balance Display per Account
+# Spec: View Read-Only Account Details on Profile Page (US-002)
 
 ## User Story
-**As a** retail banking customer,  
-**I want** to see the current, real-time balance for each of my accounts when I view or refresh the dashboard,  
-**So that** I always have an accurate picture of my financial position without needing to navigate away or wait for a batch update.
+
+**As** an authenticated banking customer,  
+**I want** to see my account details (Name, Email Address, Registration Date, and Account Status) on my Profile page,  
+**So that** I can verify my personal and account information at a glance without risk of accidental modification.
 
 ---
 
 ## Background & Context
-The dashboard currently lists accounts (via `AccountService.listAccountsByCustomer`) but does not surface the live balance alongside each account row. The `Account` domain model already carries a `balance` field (type `BigDecimal`) and a `currency` field (type `String`). The goal of this story is to expose that balance through the API and ensure it is displayed correctly in the UI, formatted with the correct currency symbol, on every dashboard load and manual refresh.
 
-This story covers the **happy path only**. Fallback behaviour when the balance source is unavailable is deferred to US-04. Aggregated totals across accounts are deferred to US-03.
+The Profile page is the primary self-service view for a customer's identity and account metadata. This story delivers the read-only display layer only. The data is sourced from the backend via a single `GET /profile` call on page load. The existing `Customer` domain model already holds `firstName`, `lastName`, `email`, `createdAt` (Registration Date), and `status` (Account Status), making this a thin presentation layer over existing domain data.
 
 ---
 
 ## Acceptance Criteria
 
-### AC-1 — Single account balance reflects latest state
-- **Given** an account's balance has changed (e.g., a transaction was recorded),  
-- **When** the customer views or refreshes the dashboard,  
-- **Then** the balance shown for that account equals the current value stored in the system (no caching lag on the happy path).
+### AC-1: Successful Profile Load
+**GIVEN** an authenticated user navigates to the Profile page,  
+**WHEN** the page loads,  
+**THEN**:
+- A `GET /profile` HTTP request is issued to the backend.
+- The response contains all four fields: `name` (full name), `email`, `registrationDate`, `accountStatus`.
+- All four fields are rendered on the page with the values returned by the API.
+- No loading spinner or blank state persists after the response is received.
 
-### AC-2 — Multiple accounts each show their own balance
-- **Given** a customer has two or more accounts,  
-- **When** the dashboard loads,  
-- **Then** each account row displays its own balance independently, with the correct currency symbol and locale-appropriate formatting (e.g., `$1,234.56`, `€1.234,56`).
+### AC-2: Read-Only Field Enforcement
+**GIVEN** the Profile page has loaded successfully,  
+**WHEN** the user inspects the Email Address, Registration Date, and Account Status fields,  
+**THEN**:
+- All three fields are rendered as non-editable (e.g., plain text, disabled input, or read-only label).
+- The Name field is also rendered as read-only in this story (editing is deferred to US-03).
+- No input, textarea, or contenteditable element is present for Email, Registration Date, or Account Status.
 
-### AC-3 — Accessibility: WCAG 2.1 AA compliance
-- **Given** a Retiree Customer persona using high-contrast mode (OS or browser level),  
-- **When** balances are displayed on the dashboard,  
-- **Then** balance figures maintain a contrast ratio of at least 4.5:1 against their background, and are not conveyed by colour alone.
+### AC-3: API Failure — Error State
+**GIVEN** `GET /profile` returns a non-2xx HTTP response or a network error,  
+**WHEN** the page attempts to render user details,  
+**THEN**:
+- A descriptive, user-friendly error message is displayed (e.g., "Unable to load profile. Please try again later.").
+- No blank field values are silently rendered.
+- No stale data from a previous session or cache is displayed.
+- The error message is visible without requiring the user to scroll.
 
-### AC-4 — Performance: page load under 2 seconds
-- **Given** normal operating conditions (service healthy, database responsive),  
-- **When** balances are retrieved and rendered for a customer's accounts,  
-- **Then** the full dashboard page load (including balance data) completes in under 2 seconds (p95).
+### AC-4: Performance
+**GIVEN** an authenticated user on the Profile page under normal load,  
+**WHEN** the page renders,  
+**THEN**:
+- The end-to-end response time for `GET /profile` is under 1 second at p95.
+- The backend service fetches all required profile data in a single database query (no N+1).
 
 ---
 
-## Functional Requirements
+## API Contract
 
-| ID | Requirement |
-|----|-------------|
-| FR-1 | The backend must expose a way to retrieve the current balance for all accounts belonging to a customer in a single API call. |
-| FR-2 | Each balance response item must include: `accountExternalId`, `accountNumber`, `accountType`, `balance` (BigDecimal), `currency` (ISO 4217 code), `status`. |
-| FR-3 | The balance value returned must be the live value from the persistence layer at the time of the request (no application-level cache on this path). |
-| FR-4 | The API response must use `externalId` only; internal database IDs must not be exposed. |
-| FR-5 | Currency formatting in the UI must use the currency code from the response to render the correct symbol and locale format. |
-| FR-6 | A manual refresh action on the dashboard must re-invoke the balance API and update all displayed balances. |
+### Endpoint
+```
+GET /profile
+Authorization: Bearer <token>
+```
+
+### Success Response — HTTP 200
+```json
+{
+  "externalId": "uuid-string",
+  "name": "Jane Doe",
+  "email": "jane.doe@example.com",
+  "registrationDate": "2023-04-15T10:30:00",
+  "accountStatus": "ACTIVE"
+}
+```
+
+### Error Response — HTTP 404
+```json
+{
+  "status": 404,
+  "error": "Not Found",
+  "message": "Customer not found: <externalId>"
+}
+```
+
+### Error Response — HTTP 500
+```json
+{
+  "status": 500,
+  "error": "Internal Server Error",
+  "message": "An unexpected error occurred."
+}
+```
+
+**Field Mapping from Domain Model:**
+
+| Response Field    | Domain Source                          | Notes                          |
+|-------------------|----------------------------------------|--------------------------------|
+| `externalId`      | `Customer.externalId`                  | Never expose internal `id`     |
+| `name`            | `Customer.firstName + " " + lastName`  | Concatenated full name         |
+| `email`           | `Customer.email`                       | Read-only, never editable      |
+| `registrationDate`| `Customer.createdAt`                   | ISO-8601 datetime              |
+| `accountStatus`   | `Customer.status` (CustomerStatus enum)| ACTIVE / INACTIVE / SUSPENDED / CLOSED |
 
 ---
 
 ## Out of Scope
-- Stale-data / fallback handling when the balance source is unavailable (US-04).
-- Aggregated / total balance across all accounts (US-03).
-- Push/streaming balance updates (WebSocket, SSE) — polling on load/refresh is sufficient.
-- Balance history or trend indicators.
-- Modifying loan, payment, or transaction domain flows.
+
+| Item                                      | Reason                              |
+|-------------------------------------------|-------------------------------------|
+| Editing the Name field                    | Deferred to US-03                   |
+| Account Settings section                  | Separate story                      |
+| Account Actions section                   | Separate story                      |
+| Password change / security settings       | Separate story                      |
+| Profile photo upload                      | Not in backlog for this sprint      |
+| Pagination or multiple profiles           | Single authenticated user only      |
 
 ---
 
 ## Cross-Service Dependencies
 
-| Dependency | Direction | Notes |
-|------------|-----------|-------|
-| `AccountRepository.findByCustomerId` | Read | Already exists; balance field already present on `Account` domain model. |
-| `CustomerRepository.findByExternalId` | Read | Used to resolve customer internal ID from external ID before querying accounts. |
-| Authentication / Identity service | Inbound | The balance endpoint must be protected; the authenticated principal must match the requested `customerExternalId` (or be an authorised operator). |
+| Dependency              | Type     | Notes                                                                 |
+|-------------------------|----------|-----------------------------------------------------------------------|
+| Authentication service  | Runtime  | `GET /profile` must validate the Bearer token; customer identity resolved from token claims |
+| `CustomerRepository`    | Internal | Existing port; `findByExternalId` used to retrieve customer data      |
+| `GlobalExceptionHandler`| Internal | Must handle `ResourceNotFoundException` → 404 and generic → 500      |
+| Database (Customer table)| Internal | `customers` table already exists via `V1__init_schema.sql`           |
 
 ---
 
-## Data Model
-No schema changes are required. The `balance` and `currency` columns already exist on the `accounts` table (established in `V1__init_schema.sql`). The `Account` domain model already exposes both fields.
-
----
-
-## API Contract (Happy Path)
-
-### Endpoint
-```
-GET /api/v1/customers/{customerExternalId}/accounts/balances
-```
-
-### Response — 200 OK
-```json
-[
-  {
-    "accountExternalId": "uuid-string",
-    "accountNumber": "1234567890",
-    "accountType": "CHECKING",
-    "balance": 1234.56,
-    "currency": "USD",
-    "status": "ACTIVE"
-  }
-]
-```
-
-### Error Responses
-| HTTP Status | Condition |
-|-------------|-----------|
-| 404 | Customer `externalId` not found |
-| 401 | Unauthenticated request |
-| 403 | Authenticated user does not have access to this customer's data |
+## Data & Privacy Considerations
+- Email address must be masked in server-side logs (e.g., `j***@example.com`).
+- Internal database `id` must never appear in the API response.
+- Response must only contain data belonging to the authenticated customer (no cross-customer data leakage).

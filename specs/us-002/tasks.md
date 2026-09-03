@@ -1,29 +1,24 @@
 ## Tasks (auto-derived from plan — review and refine)
 
-- [ ] Plan: US-002 — Real-Time Balance Display per Account
-- [ ] Architecture Decisions
-- [ ] AD-1: Reuse existing `listAccountsByCustomer` service method
-- [ ] AD-2: New dedicated endpoint rather than modifying the existing accounts list endpoint
-- [ ] AD-3: No application-level caching on the balance path
-- [ ] AD-4: DTO mapping in the controller adapter layer
-- [ ] Files / Classes to Change
-- [ ] New Files
-- [ ] Modified Files
-- [ ] API Contract Detail
-- [ ] Request
-- [ ] Success Response — 200 OK
-- [ ] Error Responses
-- [ ] `404 Not Found` — customer `externalId` does not exist (thrown by `ResourceNotFoundException`, handled by `GlobalExceptionHandler`).
-- [ ] `401 Unauthorized` — no valid bearer token (handled by security filter chain).
-- [ ] `403 Forbidden` — token does not authorise access to this customer's data.
-- [ ] Currency Formatting
-- [ ] Performance Considerations
-- [ ] The query path is: HTTP request → `AccountController` → `AccountService.getAccountBalances` → `AccountRepository.findByCustomerId` → single SQL `SELECT` with a `WHERE customer_id = ?` filter.
-- [ ] For typical retail customers (1–10 accounts), this is a single indexed query well within the 2-second SLA.
-- [ ] No N+1 query risk: all accounts are fetched in one query.
-- [ ] Connection pool (HikariCP) settings in `application.yml` should be reviewed to ensure adequate pool size for concurrent dashboard loads; no code change required unless pool is under-configured.
-- [ ] Accessibility Implementation Notes
-- [ ] Balance figures must be rendered in `<span>` or `<td>` elements with sufficient colour contrast.
-- [ ] Do not use colour alone to distinguish positive/negative balances; use a text prefix or `aria-label`.
-- [ ] Ensure `aria-label` on balance cells includes both the numeric value and the currency (e.g., `aria-label="Balance: 1,234.56 US dollars"`).
-- [ ] These are frontend concerns; the backend spec ensures the currency code is always present in the response to enable correct labelling.
+- [ ] Plan: View Read-Only Account Details on Profile Page (US-002)
+- [ ] Architecture Decision
+- [ ] Layered Change Summary
+- [ ] 1. Port (In) — New Use Case Interface
+- [ ] File:** `banking-core-service/src/main/java/com/banking/application/port/in/ProfileUseCase.java`
+- [ ] 2. DTO — Response Object
+- [ ] File:** `banking-core-service/src/main/java/com/banking/adapter/in/web/dto/ProfileResponse.java`
+- [ ] 3. Application Service — Profile Service
+- [ ] File:** `banking-core-service/src/main/java/com/banking/application/service/ProfileService.java`
+- [ ] 4. Web Adapter — Profile Controller
+- [ ] File:** `banking-core-service/src/main/java/com/banking/adapter/in/web/ProfileController.java`
+- [ ] 5. Exception Handler — Verify Coverage
+- [ ] File:** `banking-core-service/src/main/java/com/banking/adapter/in/web/GlobalExceptionHandler.java`
+- [ ] 6. Tests
+- [ ] Unit test:** `banking-core-service/src/test/java/com/banking/application/service/ProfileServiceTest.java` — success path, not-found path.
+- [ ] Controller slice test:** `banking-core-service/src/test/java/com/banking/adapter/in/web/ProfileControllerTest.java` — HTTP 200 with mocked service, HTTP 404 when service throws `ResourceNotFoundException`, HTTP 401 when unauthenticated.
+- [ ] API Contract (Summary)
+- [ ] `GET /profile` — authenticated, returns `ProfileResponse` JSON, HTTP 200 on success, 404 on missing customer, 500 on unexpected error.
+- [ ] No request body; customer identity resolved from Bearer token / security context.
+- [ ] Data Flow
+- [ ] No Database Schema Changes
+- [ ] Security Consideration
