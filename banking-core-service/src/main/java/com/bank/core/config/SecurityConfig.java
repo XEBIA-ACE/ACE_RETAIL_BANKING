@@ -1,35 +1,33 @@
 ```java
 package com.bank.core.config;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
-
-import java.io.IOException;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
  * Spring Security configuration for the Banking Core Service.
  *
- * <p>Enforces stateless JWT-based authentication. The filter chain:
- * <ul>
- *   <li>Permits unauthenticated access to public paths (OpenAPI, actuator health, auth endpoints)</li>
- *   <li>Requires authentication for all {@code /api/v1/accounts/**} routes</li>
- *   <li>Returns HTTP 401 (not a redirect) for unauthenticated requests — suitable for SPA / API clients</li>
- *   <li>Creates no HTTP session (STATELESS policy)</li>
- * </ul>
+ * <p>Defines the HTTP security filter chain and enables method-level security
+ * so that {@code @PreAuthorize} annotations on controllers and services are honoured.
  *
- * <p>Method-level security ({@code @PreAuthorize}) is enabled via {@link EnableMethodSecurity}.
+ * <p>Security rules (in evaluation order):
+ * <ol>
+ *   <li>Swagger / OpenAPI UI paths — publicly accessible (documentation only).</li>
+ *   <li>Actuator health endpoint — publicly accessible (liveness/readiness probes).</li>
+ *   <li>Authentication endpoints ({@code /api/v1/auth/**}) — publicly accessible.</li>
+ *   <li>Dashboard endpoints ({@code /api/v1/dashboard/**}) — require a valid JWT (authenticated).</li>
+ *   <li>All other requests — require authentication.</li>
+ * </ol>
+ *
+ * <p>Session management is stateless; CSRF protection is disabled because the API
+ * is consumed by clients that authenticate via Bearer JWT on every request.
  */
 @Configuration
 @EnableWebSecurity
@@ -37,89 +35,62 @@ import java.io.IOException;
 public class SecurityConfig {
 
     /**
-     * Paths that are publicly accessible without a valid JWT.
-     * Extend this list as new public endpoints are introduced.
+     * Paths that are always publicly accessible (no authentication required).
      */
     private static final String[] PUBLIC_PATHS = {
-            // OpenAPI / Swagger UI
-            "/swagger-ui/**",
+            // Springdoc / Swagger UI
             "/swagger-ui.html",
+            "/swagger-ui/**",
+            "/v3/api-docs",
             "/v3/api-docs/**",
-            "/v3/api-docs.yaml",
+            "/swagger-resources/**",
+            "/webjars/**",
             // Spring Boot Actuator — health probe only
             "/actuator/health",
-            "/actuator/info",
-            // Authentication endpoints (login / token refresh)
+            // Authentication (login / token refresh)
             "/api/v1/auth/**"
     };
 
     /**
-     * Primary security filter chain.
+     * Configures the primary {@link SecurityFilterChain}.
+     *
+     * <p>Key decisions:
+     * <ul>
+     *   <li>CSRF is disabled — the service is a stateless REST API protected by JWT.</li>
+     *   <li>Session creation policy is {@code STATELESS} — no HTTP session is created or used.</li>
+     *   <li>{@code /api/v1/dashboard/**} requires an authenticated principal; anonymous access
+     *       is explicitly denied by the {@code authenticated()} rule combined with the
+     *       {@code SessionCreationPolicy.STATELESS} policy (no anonymous session is created).</li>
+     * </ul>
      *
      * @param http the {@link HttpSecurity} builder provided by Spring Security
      * @return the configured {@link SecurityFilterChain}
-     * @throws Exception if configuration fails
+     * @throws Exception if the configuration cannot be applied
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Disable CSRF — not needed for stateless JWT APIs
+                // Disable CSRF — stateless JWT API; CSRF tokens are not applicable
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // No HTTP session should be created or used
+                // Stateless session management — no HttpSession is created or consulted
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // Return HTTP 401 JSON for unauthenticated requests instead of redirecting
-                .exceptionHandling(exceptions ->
-                        exceptions.authenticationEntryPoint(unauthorizedEntryPoint()))
-
-                // Authorisation rules
+                // Authorisation rules — evaluated in declaration order (most specific first)
                 .authorizeHttpRequests(auth -> auth
-                        // Allow unauthenticated access to public paths
+
+                        // Public paths: Swagger UI, Actuator health, Auth endpoints
                         .requestMatchers(PUBLIC_PATHS).permitAll()
-                        // All account endpoints require a valid, authenticated principal
-                        .requestMatchers("/api/v1/accounts/**").authenticated()
-                        // Any other request also requires authentication by default
+
+                        // Dashboard endpoints: valid JWT required — no anonymous access permitted
+                        .requestMatchers("/api/v1/dashboard/**").authenticated()
+
+                        // All remaining endpoints: authentication required
                         .anyRequest().authenticated()
                 );
 
         return http.build();
-    }
-
-    /**
-     * Returns an {@link AuthenticationEntryPoint} that writes a plain HTTP 401 response
-     * with a JSON error body. This prevents Spring Security from issuing a 302 redirect
-     * to a login page, which would break API / SPA consumers.
-     *
-     * @return the entry point bean
-     */
-    @Bean
-    public AuthenticationEntryPoint unauthorizedEntryPoint() {
-        return new Json401AuthenticationEntryPoint();
-    }
-
-    /**
-     * {@link AuthenticationEntryPoint} implementation that responds with HTTP 401 and a
-     * minimal JSON error payload. No redirect is issued.
-     */
-    static class Json401AuthenticationEntryPoint implements AuthenticationEntryPoint {
-
-        private static final String ERROR_BODY =
-                "{\"status\":401,\"error\":\"Unauthorized\","
-                + "\"message\":\"Authentication is required to access this resource.\"}";
-
-        @Override
-        public void commence(
-                HttpServletRequest request,
-                HttpServletResponse response,
-                AuthenticationException authException) throws IOException {
-
-            response.setStatus(HttpStatus.UNAUTHORIZED.value());
-            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            response.setCharacterEncoding("UTF-8");
-            response.getWriter().write(ERROR_BODY);
-        }
     }
 }
 ```

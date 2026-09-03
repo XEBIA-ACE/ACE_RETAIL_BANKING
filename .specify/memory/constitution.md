@@ -1,56 +1,46 @@
-# Constitution — Quality Principles & Architecture Guardrails
+# Constitution: Quality Principles & Architecture Guardrails
 
-## Technology Stack (Authoritative)
-All implementation MUST conform to the stack defined in `AGENTS.md`:
-- **Java 21 (LTS)** — language level; use records, sealed classes, pattern matching where appropriate
-- **Spring Boot 3.3.x** — web layer, DI, auto-configuration
-- **Spring Data JPA 3.3.x / Hibernate 6.x** — persistence; no native SQL unless Flyway migration
-- **MySQL 8.0+** — primary datastore; all schema changes via **Flyway 10.x** migrations
-- **MapStruct 1.6.x** — ALL DTO ↔ Entity mapping; no manual field-by-field mapping in service layer
-- **Lombok 1.18.x** — `@Builder`, `@Data`, `@Value`, `@Slf4j`; no Lombok on JPA entities for equals/hashCode
-- **Spring Security 6.x** — method-level `@PreAuthorize`; endpoints require authentication
-- **Spring Validation 3.x** — JSR-380 annotations on request DTOs; no manual null-checks
-- **Springdoc OpenAPI 2.x** — all public endpoints annotated with `@Operation`, `@ApiResponse`
-- **JUnit 5 / Mockito 5.x / Testcontainers 1.19.x / AssertJ 3.x** — test toolchain
-- **JaCoCo 0.8.x** — minimum 80% line coverage enforced in CI
+## 1. Technology Stack Compliance
+- **Language & Framework:** Java 21 (LTS) with Spring Boot 3.3.x. All new backend code must target this stack.
+- **Persistence:** Spring Data JPA 3.3.x / Hibernate 6.x over MySQL 8.0+. All schema changes must be delivered as Flyway migrations following the existing versioning sequence (V1, V2, V3…).
+- **DTO Mapping:** MapStruct 1.6.x only — no manual mapping, no reflection-based mappers.
+- **Boilerplate Reduction:** Lombok 1.18.x (`@Builder`, `@Data`, `@RequiredArgsConstructor`, etc.) is mandatory for entities and DTOs.
+- **API Documentation:** All new REST endpoints must be annotated for Springdoc OpenAPI 2.x and visible at `/swagger-ui.html`.
+- **Security:** Spring Security 6.x. Every new endpoint must be covered by the existing filter chain; no endpoint may be publicly accessible without explicit justification.
+- **Validation:** Spring Validation (JSR-380) annotations on all request DTOs; never validate manually in service layer.
 
-## Coding Standards
-- Package structure: `com.bank.core.<domain>.(controller|service|repository|domain|dto|mapper)`
-- Interfaces for all service classes; implementation suffix `Impl`
-- Controllers are thin: delegate all logic to service layer
-- Entities use `BIGINT` PKs with `GENERATED ALWAYS AS IDENTITY`; `snake_case` columns
-- All audit columns: `created_at TIMESTAMP NOT NULL`, `updated_at TIMESTAMP NOT NULL`
-- No `SELECT *`; projections via DTOs or Spring Data Projections
-- `@Transactional` on service implementation methods, not interfaces
-- Flyway scripts: sequential `V{n}__description.sql`; never alter existing scripts
+## 2. Coding Standards
+- **Naming:** `snake_case` for SQL identifiers; `camelCase` for Java fields; `PascalCase` for classes; `UPPER_SNAKE_CASE` for constants.
+- **Package Structure:** Follow the domain-per-package layout defined in `AGENTS.md` (`com.bank.core.<domain>.{controller,service,repository,domain,dto}`).
+- **Interface/Implementation Split:** Every service must have a `<Name>Service` interface and a `<Name>ServiceImpl` implementation class.
+- **No Business Logic in Controllers:** Controllers delegate entirely to the service layer; they only handle HTTP concerns (status codes, request/response mapping).
+- **Immutability:** DTOs must be immutable (use Lombok `@Value` or Java records where appropriate).
 
-## Security & Privacy
-- Account numbers MUST be masked server-side before transmission; never expose full number in any API response
-- All dashboard endpoints require a valid JWT / session; enforced via Spring Security filter chain
-- `@PreAuthorize("isAuthenticated()")` minimum on all account-facing endpoints
-- PII (account numbers) must not appear in logs at INFO or above
+## 3. Database / Migration Standards
+- Flyway migration files: `V<n>__<snake_case_description>.sql` in `banking-core-service/src/main/resources/db/migration/`.
+- `snake_case` column names; `BIGINT NOT NULL GENERATED ALWAYS AS IDENTITY` primary keys; `TIMESTAMP NOT NULL` audit columns (`created_at`, `updated_at`).
+- All foreign keys and unique constraints must be explicitly named.
+- Indexes must be created for every foreign key column and every column used in `WHERE` clauses of list queries.
 
-## Performance Non-Functional Requirements
-- Dashboard API response time **≤ 500 ms** at p95 under normal load
-- Front-end page load **< 2 s**, time-to-interactive **< 3 s** (p95) — tracked via integration/smoke test
-- Database queries for account listing must use indexed columns; no full-table scans
+## 4. Testing Standards
+- **Unit Tests:** JUnit 5 + Mockito 5.x for all service and controller layers; minimum 80% line coverage enforced by JaCoCo.
+- **Integration Tests:** Testcontainers 1.19.x with a real MySQL container for repository and end-to-end slice tests.
+- **Assertions:** AssertJ 3.x only — no JUnit `assertEquals` chains.
+- Every acceptance criterion in the story must map to at least one automated test.
 
-## Accessibility
-- All API responses include human-readable `accountTypeName` and `maskedAccountNumber` fields suitable for screen reader announcement
-- No abbreviation-only labels; full semantic labels must be present in response metadata
+## 5. Non-Functional Requirements
+- **NFR-001 / RB-NFR-001 — Performance:** Dashboard API response time ≤ 2 seconds (p95) under normal load; frontend time-to-interactive ≤ 3 seconds.
+- **Availability:** Service must not introduce single points of failure; queries must be optimised (use indexes, avoid N+1).
+- **Security:** Customer data must be scoped to the authenticated principal; no cross-customer data leakage is permitted.
+- **Observability:** New endpoints must emit structured logs at INFO level for entry/exit and at ERROR level for exceptions.
 
-## Extensibility
-- `AccountType` modelled as a Java `enum` (or a reference table) so new types (e.g., LOAN, INVESTMENT) require zero structural schema changes
-- The `accounts` table schema must not hard-code product-specific columns outside a nullable `metadata JSON` column
+## 6. Architecture Guardrails
+- No direct cross-domain JPA joins; cross-domain data access goes through service interfaces.
+- The dashboard endpoint aggregates data from existing account repositories — it must not duplicate account state.
+- Response payloads must never expose internal database IDs directly; use `externalId` / UUID-based public identifiers.
+- Pagination is not required for this story (account counts per customer are bounded), but the design must not preclude adding it later.
 
-## Testing Standards
-- Unit tests for all service methods; mock repository layer with Mockito
-- Integration test for the GET /accounts/dashboard endpoint using Testcontainers + real MySQL
-- At least one negative test: unauthenticated request returns 401
-- At least one empty-state test: customer with no accounts returns 200 with empty list and empty-state flag
-
-## Code Review Gates
-- PR must pass CI (build, test, coverage ≥ 80%)
-- No `@SuppressWarnings("unchecked")` without justification comment
-- No hardcoded credentials or connection strings
-- Flyway migration must be reviewed by a second engineer before merge
+## 7. Review Standards
+- All PRs require passing CI (build + tests + JaCoCo threshold).
+- At least one peer review approval before merge.
+- Acceptance criteria must be traceable to test method names via `@DisplayName` annotations.

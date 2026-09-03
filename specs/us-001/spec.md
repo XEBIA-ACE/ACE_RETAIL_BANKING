@@ -1,151 +1,113 @@
-# Spec: Consolidated Account Dashboard View (US-001)
+# Spec: US-001 — Consolidated Account Dashboard View
 
-## Story Narrative
-As an authenticated retail banking customer,
-I want to see all my linked accounts (checking, savings, credit cards) in a single consolidated dashboard view immediately after login,
-So that I can quickly understand my overall financial position without navigating between separate screens.
+## 1. Story Narrative
+As a retail banking customer, I want to see all of my accounts (checking, savings, and credit cards) displayed together in a single consolidated dashboard, so that I can get an immediate, complete picture of my financial position without navigating between separate screens.
 
----
+## 2. Background & Motivation
+Customers currently have no single view of their full account portfolio. This story delivers the foundational dashboard that subsequent stories (account detail drill-down US-04, transaction history US-03) will build upon. The dashboard must be accurate, performant, and visually clear.
 
-## Background & Context
-The ACE Retail Banking platform currently lacks a unified post-authentication landing page that surfaces all account balances. Customers must navigate to individual product pages to check balances, creating friction and reducing engagement. This story delivers the backend API and domain model that power the consolidated dashboard. The front-end rendering layer is assumed to be a separate concern (SPA or server-rendered template) but the API contract must support it directly.
+## 3. Acceptance Criteria
 
----
+### AC-1 — All held account types displayed together
+**Given** a customer holds checking, savings, and credit card accounts,  
+**When** the dashboard loads,  
+**Then** all three account types are displayed in one consolidated view, each clearly distinguishable from the others (e.g., distinct section headers, icons, or colour coding per account type).
 
-## Acceptance Criteria
+### AC-2 — No empty placeholders for unheld account types
+**Given** a customer does not hold a savings account (or any other account type),  
+**When** the dashboard loads,  
+**Then** no empty placeholder, empty card, or "No accounts" section is rendered for that account type.
 
-### AC-1 — Consolidated multi-account view
-**Given** an authenticated customer with at least one linked checking, savings, or credit card account  
-**When** a GET request is made to `GET /api/v1/accounts/dashboard`  
-**Then** the response returns HTTP 200 with a JSON payload listing all linked accounts in a single array, each entry containing `accountId`, `accountTypeName`, `maskedAccountNumber`, and `currentBalance`  
-**And** no additional navigation or separate API call is needed to retrieve any of the listed accounts
+### AC-3 — Non-active accounts are visually distinguished, not hidden
+**Given** a customer has one or more non-active accounts (e.g., status = `INACTIVE`, `FROZEN`, `CLOSED`),  
+**When** the dashboard loads,  
+**Then** those accounts appear in the dashboard with a clear visual indicator (e.g., greyed-out card, "Inactive" badge) and are not removed from the view.
 
-### AC-2 — Empty state
-**Given** an authenticated customer with no linked accounts  
-**When** a GET request is made to `GET /api/v1/accounts/dashboard`  
-**Then** the response returns HTTP 200 with an empty `accounts` array and `hasAccounts: false` flag  
-**And** a non-empty `emptyStateMessage` string is included in the response to guide the customer
+### AC-4 — Single account type customer sees no placeholders
+**Given** a customer holds only one account type (e.g., only a checking account),  
+**When** the dashboard loads,  
+**Then** only that account type is displayed; no sections or placeholders for savings or credit cards are rendered.
 
-### AC-3 — Account number masking
-**Given** a customer account stored in the database with a full account number  
-**When** any account appears in the dashboard response  
-**Then** the `maskedAccountNumber` field contains only `****` followed by the last 4 digits (e.g., `****1234`)  
-**And** the full account number is never present in any field of the API response
+### AC-5 — Performance (NFR-001 / RB-NFR-001)
+**Given** the dashboard is loaded under normal supported conditions,  
+**When** page load is measured,  
+**Then** the backend API response time is under 2 seconds (p95) and the frontend time-to-interactive is under 3 seconds.
 
-### AC-4 — Accessibility metadata
-**Given** the dashboard endpoint is called  
-**When** the response is rendered by any client  
-**Then** each account entry includes a human-readable `accountTypeName` (e.g., "Checking Account", "Savings Account", "Credit Card") and a `maskedAccountNumber` string  
-**And** the `ariaLabel` field is populated as `"{accountTypeName} ending in {last4}"` to support screen reader announcements
+## 4. Functional Requirements
 
-### AC-5 — Performance
-**Given** the account aggregation service (database) is operating under normal conditions  
-**When** the dashboard endpoint is called  
-**Then** the API responds in under **500 ms** at p95  
-**And** the endpoint does not perform N+1 queries (accounts must be fetched in a single query per customer)
+| ID | Requirement |
+|----|-------------|
+| FR-01 | The dashboard API endpoint returns all accounts belonging to the authenticated customer, grouped by account type. |
+| FR-02 | Each account record in the response includes: `externalId`, `accountType` (`CHECKING`, `SAVINGS`, `CREDIT_CARD`), `accountNumber` (masked), `balance`, `currency`, `status` (`ACTIVE`, `INACTIVE`, `FROZEN`, `CLOSED`), and `nickname` (optional). |
+| FR-03 | The API must only return accounts owned by the currently authenticated customer (principal-scoped query). |
+| FR-04 | Account types with zero accounts for the customer must not appear in the response payload. |
+| FR-05 | The response groups accounts under their respective `accountType` key; the frontend renders sections only for keys present in the response. |
+| FR-06 | Non-active accounts (`status != ACTIVE`) are included in the response with their `status` field populated; the frontend applies a visual distinction. |
 
-### AC-6 — Authentication guard
-**Given** an unauthenticated request (no valid JWT/session)  
-**When** `GET /api/v1/accounts/dashboard` is called  
-**Then** the response is HTTP 401 Unauthorized  
-**And** no account data is returned
+## 5. Data Model Requirements
+- A new `accounts` table (or extension of an existing one) must store: `id`, `external_id`, `customer_id`, `account_type`, `account_number`, `balance`, `currency`, `status`, `nickname`, `created_at`, `updated_at`.
+- `account_type` is an enum: `CHECKING`, `SAVINGS`, `CREDIT_CARD`.
+- `status` is an enum: `ACTIVE`, `INACTIVE`, `FROZEN`, `CLOSED`.
+- Index on `customer_id` for fast per-customer queries.
 
-### AC-7 — Extensible account type model
-**Given** the system currently supports CHECKING, SAVINGS, and CREDIT_CARD account types  
-**When** a new account type (e.g., MORTGAGE, INVESTMENT) needs to be introduced  
-**Then** adding it requires only: (a) a new enum constant, (b) a display name mapping — no table schema change and no controller change
+## 6. API Contract (Summary)
 
----
+**Endpoint:** `GET /api/v1/dashboard/accounts`  
+**Auth:** Bearer JWT (Spring Security — authenticated principal)  
+**Response:** `200 OK`
 
-## Out of Scope
-- Loan accounts
-- Investment / brokerage accounts
-- Personal Finance Management (PFM) categorisation
-- Transaction history or transaction listing
-- Account opening / creation flows
-- Credit card rewards or points display
-- Balance forecasting or trends
-- Push notifications triggered from dashboard load
-
----
-
-## Data Displayed Per Account Card
-
-| Field | Source | Notes |
-|---|---|---|
-| `accountId` | `accounts.external_id` | UUID; safe to expose publicly |
-| `accountTypeName` | Derived from `AccountType` enum | Human-readable, localisation-ready |
-| `maskedAccountNumber` | `accounts.account_number` masked | Last 4 digits only; masking applied server-side |
-| `currentBalance` | `accounts.current_balance` | Decimal, 2 decimal places |
-| `currencyCode` | `accounts.currency` | ISO 4217, e.g., "USD" |
-| `ariaLabel` | Derived field | `"{accountTypeName} ending in {last4}"` |
-
----
-
-## API Contract
-
-### Endpoint
-```
-GET /api/v1/accounts/dashboard
-Authorization: Bearer <token>
-```
-
-### Success Response (HTTP 200)
 ```json
 {
-  "hasAccounts": true,
-  "emptyStateMessage": null,
-  "accounts": [
-    {
-      "accountId": "a1b2c3d4-...",
-      "accountTypeName": "Checking Account",
-      "maskedAccountNumber": "****4321",
-      "currentBalance": 1250.00,
-      "currencyCode": "USD",
-      "ariaLabel": "Checking Account ending in 4321"
-    },
-    {
-      "accountId": "e5f6g7h8-...",
-      "accountTypeName": "Savings Account",
-      "maskedAccountNumber": "****8765",
-      "currentBalance": 5400.50,
-      "currencyCode": "USD",
-      "ariaLabel": "Savings Account ending in 8765"
-    }
-  ]
+  "customerId": "ext-uuid-123",
+  "accounts": {
+    "CHECKING": [
+      {
+        "externalId": "acc-uuid-001",
+        "accountNumber": "****1234",
+        "balance": 1500.00,
+        "currency": "USD",
+        "status": "ACTIVE",
+        "nickname": "My Main Checking"
+      }
+    ],
+    "CREDIT_CARD": [
+      {
+        "externalId": "acc-uuid-003",
+        "accountNumber": "****5678",
+        "balance": -250.00,
+        "currency": "USD",
+        "status": "INACTIVE",
+        "nickname": null
+      }
+    ]
+  }
 }
 ```
+*Note: Only account type keys present in the response are rendered by the frontend. An absent key means the customer holds no accounts of that type.*
 
-### Empty State Response (HTTP 200)
-```json
-{
-  "hasAccounts": false,
-  "emptyStateMessage": "You have no linked accounts. Please visit a branch or contact support to link your accounts.",
-  "accounts": []
-}
-```
+**Error Responses:**
+- `401 Unauthorized` — missing or invalid JWT.
+- `403 Forbidden` — authenticated but not authorised.
+- `500 Internal Server Error` — unexpected server fault.
 
-### Error Responses
-| HTTP Status | Scenario |
-|---|---|
-| 401 Unauthorized | Missing or invalid authentication token |
-| 403 Forbidden | Authenticated but not authorised for this resource |
-| 500 Internal Server Error | Unexpected server-side failure |
+## 7. Out of Scope
+- Account types beyond `CHECKING`, `SAVINGS`, and `CREDIT_CARD`.
+- Account detail drill-down (covered in US-04).
+- Transaction history display (covered in US-03).
+- Account creation or modification.
+- Pagination of accounts (bounded per customer; design must not preclude future addition).
+- Frontend framework selection (assumed to exist; this story adds the dashboard view component).
 
----
+## 8. Cross-Service Dependencies
+- **Authentication Service:** JWT issuance and validation — the dashboard endpoint relies on the authenticated principal's customer ID.
+- **Customer Domain (`com.bank.core.customer`):** Customer entity and repository already exist; the accounts domain references `customers.id` via foreign key.
+- **US-03 (Transaction History):** Will consume the same account `externalId` values produced by this story.
+- **US-04 (Account Detail):** Will use the dashboard as the entry point; account `externalId` is the navigation key.
 
-## Cross-Service Dependencies
-- **Authentication/Identity service**: Provides the authenticated customer principal (customer ID extracted from JWT or session); no direct service-to-service call needed — Spring Security populates `SecurityContext`
-- **Database (MySQL 8.0+)**: `accounts` table (to be created in this story via Flyway migration)
-- **Flyway**: Migration version must be `V3__` or later (V1 = init schema, V2 = payees table already exist)
-
----
-
-## Non-Functional Requirements Summary
-| Concern | Requirement |
-|---|---|
-| Security | All fields sanitised; account numbers masked server-side; 401 for unauthenticated access |
-| Performance | API p95 ≤ 500 ms; no N+1 queries |
-| Accessibility | `ariaLabel` field on every account entry; human-readable type names |
-| Extensibility | `AccountType` enum-driven; zero schema change for new types |
-| Observability | SLF4J structured logging at INFO for request/response (no PII); DEBUG for query details |
+## 9. Non-Functional Requirements
+| ID | Requirement | Target |
+|----|-------------|--------|
+| NFR-001 | API p95 response time | ≤ 2 000 ms |
+| NFR-001 | Frontend time-to-interactive | ≤ 3 000 ms |
+| NFR-002 | Data isolation | No cross-customer data leakage |
+| NFR-003 | Observability | Structured INFO logs on entry/exit; ERROR logs on exception |

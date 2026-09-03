@@ -1,31 +1,27 @@
 ## Tasks (auto-derived from plan — review and refine)
 
-- [ ] Plan: Consolidated Account Dashboard View (US-001)
+- [ ] Plan: US-001 — Consolidated Account Dashboard View
 - [ ] 1. Architecture Decisions
-- [ ] 1.1 Domain Model
-- [ ] 1.2 Masking Strategy
-- [ ] 1.3 Query Strategy
-- [ ] 1.4 Security
-- [ ] 1.5 Response Envelope
-- [ ] 2. Flyway Migration — V3
-- [ ] `id BIGINT NOT NULL GENERATED ALWAYS AS IDENTITY` — internal PK
-- [ ] `external_id VARCHAR(36) NOT NULL UNIQUE` — UUID exposed in API responses
-- [ ] `customer_id BIGINT NOT NULL` — FK to `customers(id)`
-- [ ] `account_type VARCHAR(50) NOT NULL` — maps to `AccountType` enum name
-- [ ] `account_number VARCHAR(255) NOT NULL` — full number (application-layer masking on read)
-- [ ] `current_balance DECIMAL(19,4) NOT NULL DEFAULT 0.0000`
-- [ ] `currency VARCHAR(3) NOT NULL`
-- [ ] `created_at TIMESTAMP NOT NULL`
-- [ ] `updated_at TIMESTAMP NOT NULL`
-- [ ] Constraints: `pk_accounts`, `uq_accounts_external_id`
-- [ ] Indexes: `idx_accounts_customer_id`, `idx_accounts_external_id`
-- [ ] 3. API Contract Summary
+- [ ] 1.1 New `account` Domain Module
+- [ ] 1.2 Dashboard Aggregation Endpoint
+- [ ] 1.3 Principal-Scoped Security
+- [ ] 1.4 Database Migration Strategy
+- [ ] 1.5 No N+1 Queries
+- [ ] 1.6 Response Masking
+- [ ] 2. API Contract
+- [ ] Method:** `GET`
+- [ ] Path:** `/api/v1/dashboard/accounts`
+- [ ] Auth:** `Authorization: Bearer <JWT>`
+- [ ] Success:** `200 OK` — `DashboardResponseDto` (see spec.md §6)
+- [ ] Errors:** `401`, `403`, `500`
+- [ ] 3. Data Model Changes
+- [ ] New Table: `accounts`
+- [ ] V3__add_accounts_table.sql
 - [ ] 4. Files / Classes to Create or Modify
-- [ ] New Files
+- [ ] Repository: `XEBIA-ACE/ACE_RETAIL_BANKING`
+- [ ] New Files — Database Migration
+- [ ] New Files — Account Domain (`com.bank.core.account`)
+- [ ] New Files — Dashboard Controller
 - [ ] Modified Files
-- [ ] 5. Test Strategy
-- [ ] MaskingUtilsTest**: parameterised tests covering short numbers, exact-4, long numbers, null/blank input
-- [ ] AccountServiceImplTest**: mock `AccountRepository`; verify correct DTO mapping, empty-state logic, `hasAccounts` flag
-- [ ] AccountControllerTest**: `@WebMvcTest` with MockMvc; test 200 with accounts, 200 empty state, 401 unauthenticated
-- [ ] AccountDashboardIntegrationTest**: Testcontainers MySQL; seed customer + accounts via Flyway; assert full JSON shape, masking, `ariaLabel` field, and that no full account number appears in response body
-- [ ] JaCoCo enforced at ≥ 80% line coverage; new classes expected to reach ≥ 90%
+- [ ] New Files — Tests
+- [ ] 5. Delivery Sequence
