@@ -1,118 +1,173 @@
-# Plan: US-001 — Consolidated Account Dashboard View
-
-## 1. Architecture Decisions
-
-### 1.1 New `account` Domain Module
-A new `account` domain package (`com.bank.core.account`) will be created following the existing domain-per-package convention defined in `AGENTS.md`. This keeps account concerns fully encapsulated and avoids polluting the `customer` domain. The domain will own its JPA entity, repository, service interface + implementation, DTOs, MapStruct mapper, and REST controller.
-
-### 1.2 Dashboard Aggregation Endpoint
-Rather than exposing a raw account list, a dedicated `DashboardController` under `com.bank.core.dashboard` will provide the `GET /api/v1/dashboard/accounts` endpoint. This controller calls `AccountService.getAccountsByCustomer(String customerExternalId)` and delegates grouping logic to the service layer, keeping the controller thin. The service returns a `DashboardResponseDto` with accounts pre-grouped by `AccountType` enum — the frontend only renders sections for keys present in the map.
-
-### 1.3 Principal-Scoped Security
-Spring Security's `@PreAuthorize` will enforce that the authenticated principal's customer external ID matches the requested data. The `SecurityConfig` will be updated to permit the new endpoint path under authenticated access. No anonymous access is permitted.
-
-### 1.4 Database Migration Strategy
-A new Flyway migration `V3__add_accounts_table.sql` will create the `accounts` table. The migration follows the conventions established in `V2__add_payees_table.sql`: `snake_case` columns, `BIGINT GENERATED ALWAYS AS IDENTITY` PK, named constraints, explicit indexes on `customer_id` and `external_id`, and `TIMESTAMP NOT NULL` audit columns. An `account_type` column will use a `VARCHAR(20)` with a `CHECK` constraint (MySQL 8.0 supports check constraints) to enforce the enum values `CHECKING`, `SAVINGS`, `CREDIT_CARD`. Similarly, `status` will be `VARCHAR(20)` with a `CHECK` constraint for `ACTIVE`, `INACTIVE`, `FROZEN`, `CLOSED`.
-
-### 1.5 No N+1 Queries
-The `AccountRepository` will use a single JPQL query with a `WHERE customer_id = :customerId` clause backed by the `idx_accounts_customer_id` index. Grouping is performed in-memory in the service layer after a single database round-trip, avoiding N+1 patterns.
-
-### 1.6 Response Masking
-Account numbers are masked at the DTO mapping layer (MapStruct mapper) — only the last 4 digits are exposed (`****XXXX`). Internal database IDs are never serialised; only `externalId` (UUID) is exposed.
+# Implementation Plan: Consolidated Account Tiles Dashboard
+## Application: CardDemo
 
 ---
 
-## 2. API Contract
-
-**Method:** `GET`  
-**Path:** `/api/v1/dashboard/accounts`  
-**Auth:** `Authorization: Bearer <JWT>`  
-**Success:** `200 OK` — `DashboardResponseDto` (see spec.md §6)  
-**Errors:** `401`, `403`, `500`
+## GR-12/13 Note
+This is a feature specification, not a decomposition exercise. GR-12 (batch boundary) and GR-13 (fine-grained boundary) are N/A for this use case.
 
 ---
 
-## 3. Data Model Changes
+## Phase 0: Pre-Implementation Prerequisites
 
-### New Table: `accounts`
-```sql
--- V3__add_accounts_table.sql
-CREATE TABLE accounts (
-    id             BIGINT       NOT NULL GENERATED ALWAYS AS IDENTITY,
-    external_id    VARCHAR(255) NOT NULL,
-    customer_id    BIGINT       NOT NULL,
-    account_type   VARCHAR(20)  NOT NULL,
-    account_number VARCHAR(255) NOT NULL,
-    balance        DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
-    currency       VARCHAR(3)   NOT NULL,
-    status         VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
-    nickname       VARCHAR(255),
-    created_at     TIMESTAMP    NOT NULL,
-    updated_at     TIMESTAMP    NOT NULL,
+### 0.1 SME Validations Required Before Coding
 
-    CONSTRAINT pk_accounts PRIMARY KEY (id),
-    CONSTRAINT uq_accounts_external_id UNIQUE (external_id),
-    CONSTRAINT chk_accounts_type CHECK (account_type IN ('CHECKING','SAVINGS','CREDIT_CARD')),
-    CONSTRAINT chk_accounts_status CHECK (status IN ('ACTIVE','INACTIVE','FROZEN','CLOSED')),
-    CONSTRAINT fk_accounts_customer_id FOREIGN KEY (customer_id) REFERENCES customers (id)
-);
-
-CREATE INDEX idx_accounts_customer_id ON accounts (customer_id);
-CREATE INDEX idx_accounts_external_id ON accounts (external_id);
-```
+| Item | Question | Source |
+|---|---|---|
+| Account type field | What field(s) in the ACCTDAT VSAM record (copybooks CVACT01Y, CVACT02Y, CVACT03Y) distinguish checking, savings, and credit-card account types? | ⚠️ SME required |
+| Account masking | What is the required masking format for account identifiers on the 3270 screen? | ⚠️ SME required |
+| COMMAREA structure | Confirm COCOM01Y.cpy (ID: 13504) is the correct session token copybook for CODASH00C to include | ⚠️ SME required |
+| Performance SLA | Translate "p95 < 2s, TTI < 3s" into CICS response time SLA for 3270 terminal | ⚠️ SME required |
+| Accessibility | Confirm 3270 screen reader compatibility requirements (JAWS for Mainframe or equivalent) | ⚠️ SME required |
+| BCM scope | Provide BCM subsystem/component for scoped impact analysis | ⚠️ Compliance gap (GR-08) |
 
 ---
 
-## 4. Files / Classes to Create or Modify
+## Phase 1: BMS Map Design and Compilation
 
-### Repository: `XEBIA-ACE/ACE_RETAIL_BANKING`
+**Objective:** Create the new CICS BMS map `CODASH00` that defines the consolidated tile layout.
 
-#### New Files — Database Migration
-| File | Purpose |
-|------|---------|
-| `banking-core-service/src/main/resources/db/migration/V3__add_accounts_table.sql` | Creates `accounts` table with constraints and indexes |
+### 1.1 New BMS Map: CODASH00
 
-#### New Files — Account Domain (`com.bank.core.account`)
-| File | Purpose |
-|------|---------|
-| `banking-core-service/src/main/java/com/bank/core/account/domain/Account.java` | JPA entity (`@Entity`, Lombok `@Data @Builder @NoArgsConstructor @AllArgsConstructor`) |
-| `banking-core-service/src/main/java/com/bank/core/account/domain/AccountType.java` | Java enum: `CHECKING`, `SAVINGS`, `CREDIT_CARD` |
-| `banking-core-service/src/main/java/com/bank/core/account/domain/AccountStatus.java` | Java enum: `ACTIVE`, `INACTIVE`, `FROZEN`, `CLOSED` |
-| `banking-core-service/src/main/java/com/bank/core/account/repository/AccountRepository.java` | Spring Data JPA repository; custom query `findAllByCustomerExternalId` |
-| `banking-core-service/src/main/java/com/bank/core/account/service/AccountService.java` | Service interface |
-| `banking-core-service/src/main/java/com/bank/core/account/service/AccountServiceImpl.java` | Service implementation; groups accounts by type |
-| `banking-core-service/src/main/java/com/bank/core/account/dto/AccountSummaryDto.java` | Immutable DTO (Lombok `@Value`) for a single account summary |
-| `banking-core-service/src/main/java/com/bank/core/account/dto/DashboardResponseDto.java` | Immutable DTO wrapping `customerId` + `Map<AccountType, List<AccountSummaryDto>>` |
-| `banking-core-service/src/main/java/com/bank/core/account/mapper/AccountMapper.java` | MapStruct mapper; masks account number |
+- Create `app/bms/CODASH00.bms` defining map set `CODASH00` with map `CODASH0A`
+- Map must include fields for:
+  - Screen title / header (reuse COTTL01Y.cpy pattern, ID: 14116)
+  - Up to 3 account tile sections (checking, savings, credit card)
+  - Each tile: account type label field, masked account number field, account status field
+  - Error message field
+  - PF key legend (consistent with existing maps)
+- Create `app/cpy-bms/CODASH00.CPY` (BMS-generated copybook)
 
-#### New Files — Dashboard Controller
-| File | Purpose |
-|------|---------|
-| `banking-core-service/src/main/java/com/bank/core/dashboard/controller/DashboardController.java` | `GET /api/v1/dashboard/accounts`; delegates to `AccountService` |
+### 1.2 Build JCL Update
 
-#### Modified Files
-| File | Change |
-|------|--------|
-| `banking-core-service/src/main/java/com/bank/core/config/SecurityConfig.java` | Permit authenticated access to `/api/v1/dashboard/**` |
-| `banking-core-service/src/main/java/com/bank/core/config/OpenApiConfig.java` | Register dashboard API group / tag |
+- Update build JCL (pattern: CBLDBMS / CICCMP transactions, IDs: 24137, 24136) to compile CODASH00.bms
+- Register CODASH00 map set in CARDDEMO.CSD
 
-#### New Files — Tests
-| File | Purpose |
-|------|---------|
-| `banking-core-service/src/test/java/com/bank/core/account/service/AccountServiceImplTest.java` | Unit tests for grouping, filtering, and principal scoping |
-| `banking-core-service/src/test/java/com/bank/core/dashboard/controller/DashboardControllerTest.java` | MockMvc slice tests for all ACs |
-| `banking-core-service/src/test/java/com/bank/core/account/repository/AccountRepositoryIntegrationTest.java` | Testcontainers integration test for repository query |
+**Dependencies:** None (can proceed in parallel with Phase 2 design)
 
 ---
 
-## 5. Delivery Sequence
-1. Flyway migration (`V3`) — unblocks all subsequent work.
-2. Domain enums and `Account` entity.
-3. `AccountRepository` with custom JPQL query.
-4. `AccountService` interface + `AccountServiceImpl` (grouping logic).
-5. MapStruct mapper with account-number masking.
-6. DTOs (`AccountSummaryDto`, `DashboardResponseDto`).
-7. `DashboardController` with `@PreAuthorize`.
-8. Security and OpenAPI config updates.
-9. Unit and integration tests.
-10. Performance validation (response time assertion in integration test or load test script).
+## Phase 2: CODASH00C Program Development
+
+**Objective:** Implement the dashboard controller program.
+
+### 2.1 Program Structure (following CardDemo conventions)
+
+CODASH00C must follow the paragraph structure pattern of existing programs (COACTVWC, ID: 13092; COMEN01C, ID: 13577):
+
+| Paragraph | Purpose |
+|---|---|
+| 0000-MAIN | Entry point; context store, COMMAREA check, PF key dispatch |
+| 1000-SEND-MAP | Send CODASH0A map to terminal |
+| 1100-SCREEN-INIT | Initialize screen fields |
+| 2000-PROCESS-INPUTS | Receive and process user input |
+| 9100-READ-ACCT-TILES | Read ACCTDAT (CICS DataSet, ID: 13444) for all accounts owned by customer |
+| 9200-BUILD-TILE-CHECKING | Populate checking tile fields (conditional on account type) |
+| 9300-BUILD-TILE-SAVINGS | Populate savings tile fields (conditional on account type) |
+| 9400-BUILD-TILE-CREDITCARD | Populate credit card tile fields (conditional on account type) |
+| 9500-MASK-ACCOUNT-ID | Apply masking to account identifier |
+| COMMON-RETURN | CICS RETURN with COMMAREA |
+| ABEND-ROUTINE | Error handling |
+
+### 2.2 Required CopyBook Includes (following COACTVWC pattern, ID: 13092)
+
+| CopyBook | CAST ID | Purpose |
+|---|---|---|
+| CODASH00.CPY | new | BMS map fields |
+| COCOM01Y.cpy | 13504 | COMMAREA / session token |
+| COTTL01Y.cpy | 14116 | Screen title fields |
+| CSDAT01Y.cpy | 14153 | Date fields |
+| CSMSG01Y.cpy | 13263 | Message fields |
+| CSUSR01Y.cpy | 13507 | User security fields |
+| CVACT01Y.cpy | 14474 | Account data layout (from COACTVWC) |
+| CVACT02Y.cpy | 14206 | Account data layout (from COACTVWC) |
+| CVACT03Y.cpy | 13702 | Account data layout (from COACTVWC) |
+| DFHAID | 1003 | CICS AID keys |
+| DFHBMSCA | 1002 | BMS attributes |
+
+### 2.3 Data Access Pattern
+
+- Read `ACCTDAT` CICS DataSet (ID: 13444) — READ with INVALID KEY clause (per rule 7756)
+- Read `CUSTDAT` CICS DataSet (ID: 14127) — READ with INVALID KEY clause
+- All CICS EXEC calls must check RESP code (per rule 8162)
+- All Working-Storage variables must be initialized with VALUE clause (per rule 8034)
+- No MOVE statements that truncate data (per rule 7688)
+- All arithmetic in loops must use ON SIZE ERROR (per rule 8478)
+
+### 2.4 Session Validation
+
+- On entry, check COMMAREA for valid session token (pattern from COCOM01Y.cpy, ID: 13504)
+- If COMMAREA absent or session expired: EXEC CICS XCTL to COSGN00C (ID: 13954) — consistent with RETURN-TO-SIGNON-SCREEN pattern used by COADM01C (ID: 14029) and COMEN01C (ID: 13577)
+
+---
+
+## Phase 3: CICS Transaction Registration
+
+**Objective:** Register new transaction CD00 in CARDDEMO.CSD.
+
+### 3.1 CSD Update
+
+- Add transaction definition: `TRANSACTION(CD00) PROGRAM(CODASH00C)` to CARDDEMO.CSD
+- Add map set definition: `MAPSET(CODASH00)` to CARDDEMO.CSD
+- Pattern: follow existing entries in `app/csd/CARDDEMO.CSD`
+
+---
+
+## Phase 4: Menu Integration
+
+**Objective:** Add dashboard option to existing menu programs.
+
+### 4.1 COMEN01C Modification (ID: 13577, file: app/cbl/COMEN01C.cbl)
+
+- Modify `BUILD-MENU-OPTIONS` paragraph (ID: 13851) to add "View Account Dashboard" option
+- Modify `PROCESS-ENTER-KEY` paragraph (ID: 14234) to handle new option: EXEC CICS XCTL PROGRAM(CODASH00C)
+- ⚠️ Regression risk: COMEN01C has 25 inward callers (CAST MCP, query #21). Any change to menu option numbering must be regression-tested against all callers.
+
+### 4.2 COADM01C Modification (ID: 14029, file: app/cbl/COADM01C.cbl)
+
+- Modify `BUILD-MENU-OPTIONS` paragraph (ID: 13453) to add "View Account Dashboard" option
+- Modify `PROCESS-ENTER-KEY` paragraph (ID: 14096) to handle new option
+- ⚠️ Regression risk: COADM01C has 15 inward callers (CAST MCP, query #18).
+
+---
+
+## Phase 5: Testing
+
+### 5.1 Unit Testing
+
+- Test CODASH00C with ACCTDAT records containing: all 3 account types, only checking, only savings, only credit card, no accounts
+- Test session validation: expired COMMAREA → redirect to COSGN00C (ID: 13954)
+- Test account masking logic
+
+### 5.2 Integration Testing
+
+- Test full flow: CC00 → COSGN00C → COMEN01C → CD00 → CODASH00C
+- Test full flow: CC00 → COSGN00C → COADM01C → CD00 → CODASH00C
+- Test CICS DataSet access: ACCTDAT (ID: 13444), CUSTDAT (ID: 14127)
+- Regression test all 25 callers of COMEN01C and 15 callers of COADM01C
+
+### 5.3 Performance Testing
+
+- Measure CICS response time under normal and peak load
+- Target: ⚠️ SME to confirm equivalent of "p95 < 2s" in CICS terms
+
+### 5.4 Accessibility Testing
+
+- ⚠️ SME to confirm 3270 screen reader compatibility requirements
+
+---
+
+## Rollback Strategy
+
+1. Remove CD00 transaction from CARDDEMO.CSD (no existing transaction displaced)
+2. Revert COMEN01C (ID: 13577) to previous version — restore BUILD-MENU-OPTIONS and PROCESS-ENTER-KEY paragraphs
+3. Revert COADM01C (ID: 14029) to previous version — restore BUILD-MENU-OPTIONS and PROCESS-ENTER-KEY paragraphs
+4. Remove CODASH00C load module from CICS load library
+5. Remove CODASH00 map set from CICS load library
+6. No data store changes are made by this feature — rollback does not require data migration
+
+---
+
+## Dependency Upgrade Table
+
+Not applicable — this is a feature addition to an existing mainframe COBOL/CICS application. No framework version upgrades are required. (Source: Requirement Document — no version upgrade targets specified.)

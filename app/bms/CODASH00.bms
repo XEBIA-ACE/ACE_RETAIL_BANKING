@@ -1,0 +1,375 @@
+         TITLE 'CODASH00 - CONSOLIDATED ACCOUNT TILES DASHBOARD MAP'
+***********************************************************************
+* BMS MAP SOURCE: CODASH00                                            *
+* MAP SET:        CODASH00                                            *
+* MAP NAME:       CODASH0A                                            *
+* PURPOSE:        CONSOLIDATED ACCOUNT TILES DASHBOARD               *
+*                 DISPLAYS CHECKING, SAVINGS, AND CREDIT CARD        *
+*                 ACCOUNT TILES FOR THE AUTHENTICATED CUSTOMER.      *
+* TASK:           TASK-010 / TASK-011                                 *
+* DATE:           2026-03-10                                          *
+* PATTERN:        COMEN1A (ID: 13357), COADM1A (ID: 14185)           *
+***********************************************************************
+*
+CODASH00 DFHMSD TYPE=&SYSPARM,                                         X
+               LANG=COBOL,                                             X
+               MODE=INOUT,                                             X
+               TERM=3270-2,                                            X
+               CTRL=FREEKB,                                            X
+               STORAGE=AUTO,                                           X
+               TIOAPFX=YES
+*
+***********************************************************************
+* MAP: CODASH0A                                                       *
+* CONSOLIDATED ACCOUNT TILES SCREEN                                   *
+***********************************************************************
+*
+CODASH0A DFHMDI SIZE=(24,80),                                          X
+               LINE=1,                                                 X
+               COLUMN=1
+*
+***********************************************************************
+* ROW 1: SCREEN TITLE                                                 *
+***********************************************************************
+*
+         DFHMDF POS=(1,1),                                             X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=40,                                              X
+               INITIAL='CARDDEMO - ACCOUNT DASHBOARD'
+*
+CDTITLE  DFHMDF POS=(1,42),                                            X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=38,                                              X
+               INITIAL=' '
+*
+***********************************************************************
+* ROW 2: DATE AND TIME                                                *
+***********************************************************************
+*
+         DFHMDF POS=(2,1),                                             X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=6,                                               X
+               INITIAL='DATE: '
+*
+CDDATE   DFHMDF POS=(2,7),                                             X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=10,                                              X
+               INITIAL=' '
+*
+         DFHMDF POS=(2,18),                                            X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=6,                                               X
+               INITIAL='TIME: '
+*
+CDTIME   DFHMDF POS=(2,24),                                            X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=8,                                               X
+               INITIAL=' '
+*
+         DFHMDF POS=(2,55),                                            X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=8,                                               X
+               INITIAL='USER ID:'
+*
+CDUSRID  DFHMDF POS=(2,64),                                            X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=8,                                               X
+               INITIAL=' '
+*
+***********************************************************************
+* ROW 3: SEPARATOR                                                    *
+***********************************************************************
+*
+         DFHMDF POS=(3,1),                                             X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=79,                                              X
+               INITIAL='-----------------------------------------------X
+               --------------------------------'
+*
+***********************************************************************
+* ROW 4: SECTION HEADER                                               *
+***********************************************************************
+*
+         DFHMDF POS=(4,1),                                             X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=40,                                              X
+               INITIAL='YOUR ACCOUNT TILES'
+*
+***********************************************************************
+* ROWS 6-10: CHECKING ACCOUNT TILE                                    *
+***********************************************************************
+*
+         DFHMDF POS=(6,1),                                             X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=25,                                              X
+               INITIAL='+---------------------+'
+*
+         DFHMDF POS=(7,1),                                             X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=2,                                               X
+               INITIAL='| '
+*
+CDCHKLB  DFHMDF POS=(7,3),                                             X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=20,                                              X
+               INITIAL='CHECKING ACCOUNT    '
+*
+         DFHMDF POS=(7,23),                                            X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=2,                                               X
+               INITIAL=' |'
+*
+         DFHMDF POS=(8,1),                                             X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=2,                                               X
+               INITIAL='| '
+*
+         DFHMDF POS=(8,3),                                             X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=5,                                               X
+               INITIAL='ACCT:'
+*
+CDCHKID  DFHMDF POS=(8,9),                                             X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=16,                                              X
+               INITIAL='                '
+*
+         DFHMDF POS=(8,25),                                            X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=1,                                               X
+               INITIAL='|'
+*
+         DFHMDF POS=(9,1),                                             X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=2,                                               X
+               INITIAL='| '
+*
+         DFHMDF POS=(9,3),                                             X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=4,                                               X
+               INITIAL='STS:'
+*
+CDCHKST  DFHMDF POS=(9,8),                                             X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=1,                                               X
+               INITIAL=' '
+*
+         DFHMDF POS=(9,10),                                            X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=4,                                               X
+               INITIAL='BAL:'
+*
+CDCHKBAL DFHMDF POS=(9,15),                                            X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=13,                                              X
+               INITIAL='             '
+*
+         DFHMDF POS=(9,28),                                            X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=1,                                               X
+               INITIAL='|'
+*
+         DFHMDF POS=(10,1),                                            X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=25,                                              X
+               INITIAL='+---------------------+'
+*
+***********************************************************************
+* ROWS 12-16: SAVINGS ACCOUNT TILE                                    *
+***********************************************************************
+*
+         DFHMDF POS=(12,1),                                            X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=25,                                              X
+               INITIAL='+---------------------+'
+*
+         DFHMDF POS=(13,1),                                            X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=2,                                               X
+               INITIAL='| '
+*
+CDSAVLB  DFHMDF POS=(13,3),                                            X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=20,                                              X
+               INITIAL='SAVINGS ACCOUNT     '
+*
+         DFHMDF POS=(13,23),                                           X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=2,                                               X
+               INITIAL=' |'
+*
+         DFHMDF POS=(14,1),                                            X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=2,                                               X
+               INITIAL='| '
+*
+         DFHMDF POS=(14,3),                                            X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=5,                                               X
+               INITIAL='ACCT:'
+*
+CDSAVID  DFHMDF POS=(14,9),                                            X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=16,                                              X
+               INITIAL='                '
+*
+         DFHMDF POS=(14,25),                                           X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=1,                                               X
+               INITIAL='|'
+*
+         DFHMDF POS=(15,1),                                            X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=2,                                               X
+               INITIAL='| '
+*
+         DFHMDF POS=(15,3),                                            X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=4,                                               X
+               INITIAL='STS:'
+*
+CDSAVST  DFHMDF POS=(15,8),                                            X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=1,                                               X
+               INITIAL=' '
+*
+         DFHMDF POS=(15,10),                                           X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=4,                                               X
+               INITIAL='BAL:'
+*
+CDSAVBAL DFHMDF POS=(15,15),                                           X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=13,                                              X
+               INITIAL='             '
+*
+         DFHMDF POS=(15,28),                                           X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=1,                                               X
+               INITIAL='|'
+*
+         DFHMDF POS=(16,1),                                            X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=25,                                              X
+               INITIAL='+---------------------+'
+*
+***********************************************************************
+* ROWS 18-22: CREDIT CARD ACCOUNT TILE                                *
+***********************************************************************
+*
+         DFHMDF POS=(18,1),                                            X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=25,                                              X
+               INITIAL='+---------------------+'
+*
+         DFHMDF POS=(19,1),                                            X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=2,                                               X
+               INITIAL='| '
+*
+CDCRDLB  DFHMDF POS=(19,3),                                            X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=20,                                              X
+               INITIAL='CREDIT CARD ACCOUNT '
+*
+         DFHMDF POS=(19,23),                                           X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=2,                                               X
+               INITIAL=' |'
+*
+         DFHMDF POS=(20,1),                                            X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=2,                                               X
+               INITIAL='| '
+*
+         DFHMDF POS=(20,3),                                            X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=5,                                               X
+               INITIAL='ACCT:'
+*
+CDCRDID  DFHMDF POS=(20,9),                                            X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=16,                                              X
+               INITIAL='                '
+*
+         DFHMDF POS=(20,25),                                           X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=1,                                               X
+               INITIAL='|'
+*
+         DFHMDF POS=(21,1),                                            X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=2,                                               X
+               INITIAL='| '
+*
+         DFHMDF POS=(21,3),                                            X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=4,                                               X
+               INITIAL='STS:'
+*
+CDCRDST  DFHMDF POS=(21,8),                                            X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=1,                                               X
+               INITIAL=' '
+*
+         DFHMDF POS=(21,10),                                           X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=4,                                               X
+               INITIAL='BAL:'
+*
+CDRDBAL  DFHMDF POS=(21,15),                                           X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=13,                                              X
+               INITIAL='             '
+*
+         DFHMDF POS=(21,28),                                           X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=1,                                               X
+               INITIAL='|'
+*
+         DFHMDF POS=(22,1),                                            X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=25,                                              X
+               INITIAL='+---------------------+'
+*
+***********************************************************************
+* ROW 22: INFO MESSAGE                                                *
+***********************************************************************
+*
+CDINMSG  DFHMDF POS=(22,30),                                           X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=50,                                              X
+               INITIAL=' '
+*
+***********************************************************************
+* ROW 23: ERROR MESSAGE                                               *
+***********************************************************************
+*
+CDERRMS  DFHMDF POS=(23,1),                                            X
+               ATTRB=(PROT,BRT),                                       X
+               LENGTH=78,                                              X
+               INITIAL=' '
+*
+***********************************************************************
+* ROW 24: PF KEY LEGEND                                               *
+* CONSISTENT WITH COMEN1A (ID: 13357) AND COADM1A (ID: 14185)        *
+***********************************************************************
+*
+         DFHMDF POS=(24,1),                                            X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=20,                                              X
+               INITIAL='PF3=RETURN TO MENU  '
+*
+         DFHMDF POS=(24,22),                                           X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=20,                                              X
+               INITIAL='PF12=SIGN OFF       '
+*
+         DFHMDF POS=(24,43),                                           X
+               ATTRB=(PROT,NORM),                                      X
+               LENGTH=20,                                              X
+               INITIAL='ENTER=REFRESH       '
+*
+         DFHMSD TYPE=FINAL
+*
+         END
