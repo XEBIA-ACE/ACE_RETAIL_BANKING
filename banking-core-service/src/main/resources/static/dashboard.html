@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Account Balance Dashboard</title>
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+<main class="dashboard" id="dashboard" data-state="idle">
+    <h1>Account balance</h1>
+    <form id="connection-form">
+        <label for="jwt">JWT token</label>
+        <input id="jwt" name="jwt" type="password" autocomplete="off" required>
+        <label for="account-id">Account ID</label>
+        <input id="account-id" name="accountId" required>
+        <div class="actions">
+            <button type="submit">Connect</button>
+            <button type="button" id="disconnect" disabled>Disconnect</button>
+        </div>
+    </form>
+    <p id="error-banner" class="banner" hidden><span aria-hidden="true">⚠</span> <span></span></p>
+    <section class="balance-card" aria-live="polite">
+        <p class="label">Current balance</p>
+        <p id="balance">Loading…</p>
+        <p id="currency"></p>
+        <p id="timestamp"></p>
+    </section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+<script src="/js/balance-dashboard.js"></script>
+</body>
+</html>
