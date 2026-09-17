@@ -1,0 +1,14 @@
+:root { color-scheme: light; font-family: system-ui, sans-serif; }
+body { background: #f3f6fb; margin: 0; }
+.dashboard { margin: 3rem auto; max-width: 34rem; padding: 2rem; }
+form, .balance-card { background: white; border-radius: .75rem; box-shadow: 0 .2rem 1rem #17365d1a; padding: 1.25rem; }
+label { display: block; font-weight: 600; margin-top: .75rem; }
+input { box-sizing: border-box; margin-top: .35rem; padding: .65rem; width: 100%; }
+.actions { display: flex; gap: .75rem; margin-top: 1.25rem; }
+button { cursor: pointer; padding: .65rem 1rem; }
+.balance-card { margin-top: 1.5rem; text-align: center; }
+.label { color: #596579; }
+#balance { font-size: 2.5rem; font-weight: 700; margin: .5rem 0; }
+#timestamp { color: #596579; font-size: .9rem; }
+.banner { background: #fff3cd; border: 1px solid #e0bd55; padding: .75rem; }
+[data-state="degraded"] .balance-card { border-left: .35rem solid #d69e2e; }
