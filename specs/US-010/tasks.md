@@ -1,0 +1,23 @@
+# Tasks: US-010
+
+- [ ] T001 FR-US-010-001 (maps to US-010-ac-1): The system shall support filtering the notification history by a single notification type at a time, where notification types include at least large-transaction, low-balance, and bill-reminder notifications; when such a filter is applied by an authenticated customer, the list shall include only notifications of the selected type and exclude all other types. Any ambiguity about the full set of supported notification types is unresolved by this story and must not be assumed beyond the examples given.
+- [ ] T002 FR-US-010-002 (maps to US-010-ac-2): The system shall support applying a time-period filter to the notification history (for example, a 'last 30 days' option); when a supported time-period filter is applied, only notifications whose timestamps fall within the selected period shall be displayed in the list. The exact catalog of supported time-period options (beyond the example of 'last 30 days') is not specified in this story and remains intentionally undefined.
+- [ ] T003 FR-US-010-003 (maps to US-010-ac-3): The system shall support sorting the notification history by timestamp in a newest-first order; when newest-first sorting is selected, the notification with the most recent timestamp shall appear at the top of the list, and all other notifications shall be ordered strictly according to their timestamps so that list order is consistent with those timestamps. The handling of notifications with identical timestamps is not defined by this story and shall not be inferred.
+- [ ] T004 FR-US-010-004 (maps to US-010-ac-4): The system shall allow customers to change filter and sort options while remaining on the notification history screen; whenever a filter or sort option is changed, the displayed list shall be updated in-place to reflect the new options, without requiring the customer to leave and re-enter the notification history screen or perform any navigation away and back as a refresh mechanism.
+- [ ] T005 FR-US-010-005 (maps to US-010-ac-5, constrained by impact analysis revision 1 and unmapped CAST evidence): Under normal supported load and for a typical customer notification history size, the system shall apply or change filters and sorting on the notification history such that the updated list is returned within the app-wide response-time targets defined for interactive filtering in NFR-001 to NFR-003. The CAST impact analysis (accepted_impact_hash sha256:a9b1dc9142b8c4a35904641b3a6060493332f62ac302444b15c97f58990ef2dd, revision 1) identifies no existing provider implementing these performance guarantees (all related acceptance criteria are currently unmapped to components like Cobol paragraph 9100-CHECK-FILTERS in program COTRTLIC), so this requirement represents net-new behavior relative to the analyzed mainframe artifacts and must not be assumed to be already satisfied.
+- [ ] T006 Verify US-010-ac-1: Given an authenticated customer with a mix of large-transaction, low-balance, and bill-reminder notifications in history
+When the customer applies a filter for a single notification type
+Then only notifications of that selected type are displayed in the list
+- [ ] T007 Verify US-010-ac-2: Given an authenticated customer with notifications across multiple months
+When the customer selects a supported time-period filter (for example, last 30 days) and applies it
+Then only notifications whose timestamps fall within the selected period are displayed
+- [ ] T008 Verify US-010-ac-3: Given an authenticated customer viewing notification history with many entries
+When the customer selects a sort order of newest-first
+Then the list is displayed with the most recent notification at the top and ordering consistent with timestamps
+- [ ] T009 Verify US-010-ac-4: Given filters and sorting are applied to the notification history
+When the customer changes filter or sort options
+Then the list updates without requiring the customer to leave and re-enter the history screen
+- [ ] T010 Verify US-010-ac-5: Given normal supported load and a typical customer history size
+When the customer applies or changes filters or sorting
+Then the filtered/sorted list is returned within the app-wide response-time targets for interactive filtering (per NFR-001 to NFR-003)
+- [ ] T011 Verify IMPACT: Regression-test CICS transaction CTLI (13242) along the measured transaction path 24146, focusing on 9100-CHECK-FILTERS (13772) behavior and its interaction with 1290-CROSS-EDITS (13780) and 9999-FORMAT-DB2-MESSAGE (14263).
