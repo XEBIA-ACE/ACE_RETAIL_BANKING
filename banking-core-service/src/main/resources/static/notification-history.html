@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Notification history</title>
+    <link rel="stylesheet" href="/css/notification-history.css">
+</head>
+<body>
+<main class="history" id="notification-history" data-state="idle">
+    <h1>Notification history</h1>
+    <p class="intro">Smart notifications generated for your accounts, most recent first.</p>
+
+    <form id="session-form">
+        <label for="access-token">Access token</label>
+        <input id="access-token" name="accessToken" type="password" autocomplete="off" required>
+        <button type="submit">Show history</button>
+    </form>
+
+    <p id="loading" class="status" role="status" hidden>Loading notification history…</p>
+    <p id="error-banner" class="banner" role="alert" hidden></p>
+    <p id="empty-state" class="status empty" role="status" hidden>
+        No notification history is available yet. Alerts such as large transactions, low balances
+        and bill reminders will appear here once they are sent to you.
+    </p>
+
+    <ol id="notification-list" class="notification-list" aria-label="Notifications, most recent first" hidden></ol>
+</main>
+<script src="/js/notification-history.js"></script>
+</body>
+</html>

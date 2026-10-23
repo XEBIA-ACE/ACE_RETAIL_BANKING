@@ -1,0 +1,106 @@
+:root {
+    color-scheme: light;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: #1f2933;
+    background: #f5f7fa;
+}
+
+body {
+    margin: 0;
+}
+
+.history {
+    max-width: 44rem;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 3rem;
+}
+
+h1 {
+    margin-bottom: 0.25rem;
+}
+
+.intro {
+    margin-top: 0;
+    color: #52606d;
+}
+
+form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 1rem 0 1.5rem;
+}
+
+label {
+    font-weight: 600;
+}
+
+input {
+    flex: 1 1 16rem;
+    padding: 0.5rem;
+    border: 1px solid #7b8794;
+    border-radius: 4px;
+    font: inherit;
+}
+
+button {
+    padding: 0.5rem 1rem;
+    border: 0;
+    border-radius: 4px;
+    background: #0b5cad;
+    color: #ffffff;
+    font: inherit;
+    cursor: pointer;
+}
+
+input:focus-visible,
+button:focus-visible {
+    outline: 3px solid #f0b429;
+    outline-offset: 2px;
+}
+
+.status {
+    padding: 1rem;
+    border-radius: 6px;
+    background: #ffffff;
+    border: 1px solid #cbd2d9;
+}
+
+.banner {
+    padding: 1rem;
+    border-radius: 6px;
+    background: #fde8e8;
+    border: 1px solid #b42318;
+    color: #7a1a12;
+}
+
+.notification-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.notification {
+    padding: 1rem;
+    border-radius: 6px;
+    background: #ffffff;
+    border: 1px solid #cbd2d9;
+}
+
+.notification-type {
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
+}
+
+.notification-message {
+    margin: 0 0 0.5rem;
+}
+
+.notification-meta {
+    margin: 0;
+    color: #52606d;
+    font-size: 0.875rem;
+}

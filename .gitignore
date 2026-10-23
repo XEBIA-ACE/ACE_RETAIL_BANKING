@@ -15,3 +15,6 @@ Thumbs.db
 # Dependencies
 node_modules/
 vendor/
+
+# Maven
+target/
