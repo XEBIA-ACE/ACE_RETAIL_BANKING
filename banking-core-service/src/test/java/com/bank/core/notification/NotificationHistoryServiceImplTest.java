@@ -113,10 +113,13 @@ class NotificationHistoryServiceImplTest {
 
         service.getHistory(query(Locale.ENGLISH, ZURICH, Set.of(NotificationType.LOW_BALANCE)));
         service.getHistory(query(Locale.ENGLISH, ZURICH, Set.of()));
+        service.getHistory(query(Locale.ENGLISH, ZURICH, null));
 
-        verify(repository, org.mockito.Mockito.times(2)).findCustomerHistory(eq("cust-a"), any(), types.capture());
+        verify(repository, org.mockito.Mockito.times(3)).findCustomerHistory(eq("cust-a"), any(), types.capture());
         assertThat(types.getAllValues().get(0)).containsExactly(NotificationType.LOW_BALANCE);
         assertThat(types.getAllValues().get(1)).containsExactlyInAnyOrderElementsOf(
+                EnumSet.allOf(NotificationType.class));
+        assertThat(types.getAllValues().get(2)).containsExactlyInAnyOrderElementsOf(
                 EnumSet.allOf(NotificationType.class));
     }
 

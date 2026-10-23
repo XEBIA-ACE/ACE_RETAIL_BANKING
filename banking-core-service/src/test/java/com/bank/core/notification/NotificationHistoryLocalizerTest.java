@@ -49,6 +49,8 @@ class NotificationHistoryLocalizerTest {
         assertThat(localizer.resolve(null, "fr-CH,fr;q=0.9,en;q=0.5")).isEqualTo(Locale.FRENCH);
         assertThat(localizer.resolve("es", "pt-BR")).isEqualTo(Locale.ENGLISH);
         assertThat(localizer.resolve(null, ";;;not-a-range")).isEqualTo(Locale.ENGLISH);
+        assertThat(localizer.resolve(" ", " ")).isEqualTo(Locale.ENGLISH);
+        assertThat(localizer.resolve(null, null)).isEqualTo(Locale.ENGLISH);
     }
 
     private static Properties load(String path) throws IOException {

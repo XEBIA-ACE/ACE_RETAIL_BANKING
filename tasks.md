@@ -37,5 +37,6 @@ Spec: `specs/US-028/` (bundle `395373f0-e91b-4d10-9cbe-6825ce51d385`, Spec Agent
 ## Build / Docs
 - [x] `mvn clean verify` passes (H2 MySQL mode + Flyway)
 - [x] `mvn clean package -DskipTests` passes
+- [x] JaCoCo `check` gate (≥ 90% line and branch) enforced in `mvn verify` — currently 96.3% line / 100% branch
 - [ ] Docker image / docker-compose health check — no Dockerfile/docker-compose in this repository baseline
 - [x] README updated with US-028 endpoints and environment variables
