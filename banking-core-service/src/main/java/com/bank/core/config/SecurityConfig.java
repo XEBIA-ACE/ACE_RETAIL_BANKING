@@ -1,0 +1,54 @@
+package com.bank.core.config;
+
+import com.bank.core.notification.security.CustomerClaims;
+import java.nio.charset.StandardCharsets;
+import javax.crypto.spec.SecretKeySpec;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+@EnableConfigurationProperties(SecurityConfig.JwtProperties.class)
+public class SecurityConfig {
+
+    public static final String NOTIFICATION_HISTORY_WRITE = "SCOPE_notification-history:write";
+
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        return http
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/health", "/swagger-ui/**", "/swagger-ui.html", "/api-docs/**",
+                                "/notification-history.html", "/js/**", "/css/**").permitAll()
+                        .requestMatchers("/api/v1/notifications/**").access(CustomerClaims.requireCustomerId())
+                        .requestMatchers("/internal/v1/notification-history/**")
+                                .hasAuthority(NOTIFICATION_HISTORY_WRITE)
+                        .anyRequest().authenticated())
+                .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> { }))
+                .build();
+    }
+
+    @Bean
+    JwtDecoder jwtDecoder(JwtProperties properties) {
+        if (properties.secret() == null
+                || properties.secret().getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("JWT_SECRET must be at least 32 bytes");
+        }
+        SecretKeySpec key = new SecretKeySpec(
+                properties.secret().getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        return NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
+    }
+
+    @ConfigurationProperties(prefix = "security.jwt")
+    public record JwtProperties(String secret) {
+    }
+}
