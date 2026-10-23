@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title data-i18n="history.title">Notification history</title>
+    <link rel="stylesheet" href="/css/notification-history.css">
+</head>
+<body>
+<a class="skip-link" href="#notification-list" data-i18n="history.skip">Skip to notification list</a>
+<main class="history" id="notification-history" data-state="idle" aria-labelledby="history-title">
+    <nav aria-label="Breadcrumb">
+        <a id="return-link" class="return-link" href="/dashboard" hidden></a>
+    </nav>
+
+    <header class="history-header">
+        <h1 id="history-title" data-i18n="history.title">Notification history</h1>
+        <p class="intro" data-i18n="history.intro">Alerts we sent you about large transactions, low balances and upcoming bills.</p>
+        <p id="retention-note" class="note"></p>
+        <p id="timezone-note" class="note"></p>
+    </header>
+
+    <form id="settings-form" class="settings" novalidate>
+        <div class="field">
+            <label for="language" data-i18n="history.language.label">Language</label>
+            <select id="language" name="lang">
+                <option value="en" lang="en">English</option>
+                <option value="de" lang="de">Deutsch</option>
+                <option value="fr" lang="fr">Français</option>
+                <option value="it" lang="it">Italiano</option>
+            </select>
+        </div>
+        <div class="field">
+            <label for="access-token" data-i18n="history.token.label">Access token</label>
+            <input id="access-token" name="accessToken" type="password" autocomplete="off" required>
+        </div>
+        <fieldset class="filters">
+            <legend data-i18n="history.filter.legend">Filter by alert type</legend>
+            <div class="filter-option">
+                <input type="checkbox" id="filter-LARGE_TRANSACTION" name="types" value="LARGE_TRANSACTION" checked>
+                <label for="filter-LARGE_TRANSACTION" data-i18n="type.LARGE_TRANSACTION">Large transaction</label>
+            </div>
+            <div class="filter-option">
+                <input type="checkbox" id="filter-LOW_BALANCE" name="types" value="LOW_BALANCE" checked>
+                <label for="filter-LOW_BALANCE" data-i18n="type.LOW_BALANCE">Low balance</label>
+            </div>
+            <div class="filter-option">
+                <input type="checkbox" id="filter-BILL_REMINDER" name="types" value="BILL_REMINDER" checked>
+                <label for="filter-BILL_REMINDER" data-i18n="type.BILL_REMINDER">Bill reminder</label>
+            </div>
+        </fieldset>
+        <button type="submit" data-i18n="history.token.submit">Show history</button>
+    </form>
+
+    <div id="live-status" class="status" role="status" aria-live="polite" aria-atomic="true"></div>
+    <p id="error-banner" class="banner" role="alert" hidden></p>
+    <p id="empty-state" class="status empty" hidden data-i18n="history.empty">No notifications were sent to you in this period.</p>
+
+    <ol id="notification-list" class="notification-list" tabindex="-1"
+        aria-label="Notifications, most recent first" data-i18n-aria-label="history.list.label" hidden></ol>
+</main>
+<script src="/js/notification-history.js"></script>
+</body>
+</html>
