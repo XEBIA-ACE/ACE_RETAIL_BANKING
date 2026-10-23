@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Notification history</title>
+    <link rel="stylesheet" href="/css/notification-history.css">
+    <script src="/js/notification-history.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#notification-list" data-i18n="page.skipLink">Skip to notification list</a>
+
+<header class="nh-header">
+    <nav aria-label="Breadcrumb" class="nh-back" id="back-nav" hidden>
+        <a id="back-link" href="/"></a>
+    </nav>
+    <h1 id="page-heading" data-i18n="page.heading">Notification history</h1>
+    <p id="page-intro" class="nh-intro" data-i18n="page.intro"></p>
+</header>
+
+<main id="main" class="nh-main" aria-labelledby="page-heading">
+    <form class="nh-controls" id="controls" novalidate>
+        <div class="nh-field">
+            <label for="category-filter" data-i18n="filter.label">Show notifications</label>
+            <select id="category-filter" name="category">
+                <option value="" data-i18n="filter.all">All notifications</option>
+                <option value="TRANSACTION" data-i18n="filter.TRANSACTION">Transactions</option>
+                <option value="BALANCE" data-i18n="filter.BALANCE">Balances</option>
+                <option value="BILL" data-i18n="filter.BILL">Bills</option>
+            </select>
+        </div>
+        <div class="nh-field">
+            <label for="language-select" data-i18n="language.label">Language</label>
+            <select id="language-select" name="lang">
+                <option value="en" lang="en">English</option>
+                <option value="de" lang="de">Deutsch</option>
+                <option value="fr" lang="fr">Fran&ccedil;ais</option>
+                <option value="it" lang="it">Italiano</option>
+            </select>
+        </div>
+    </form>
+
+    <p id="status" class="nh-status" role="status" aria-live="polite" aria-atomic="true"></p>
+    <p id="error" class="nh-error" role="alert" hidden></p>
+
+    <ol id="notification-list" class="nh-list" tabindex="-1" aria-labelledby="list-label"></ol>
+    <span id="list-label" class="visually-hidden" data-i18n="list.label">Notifications, newest first</span>
+
+    <button type="button" id="load-more" class="nh-button" hidden data-i18n="action.loadMore">Show more notifications</button>
+</main>
+</body>
+</html>
